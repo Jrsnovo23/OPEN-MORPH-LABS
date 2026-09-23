@@ -656,26 +656,33 @@ PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
 void PPGWave3Editor::FxTab::resized()
 {
     auto r = getLocalBounds();
-    auto indicatorArea = r.removeFromRight (20).reduced (3, 3);
+
+    // Toggle ON/OFF a la derecha, compacto (14×14 aprox)
+    auto indicatorArea = r.removeFromRight (18).reduced (2, 4);
     toggleBtn.setBounds (indicatorArea);
 }
 
 void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
 {
-    auto r = getLocalBounds().toFloat();
+    auto r = getLocalBounds();
 
-    g.setColour (juce::Colour (0xff141414));
-    g.fillRoundedRectangle (r, 3.0f);
+    // Nombre estilo "título de sección" del bloque superior
+    auto textRow = r;
+    textRow.removeFromRight (18);   // hueco del toggle
 
-    g.setColour (juce::Colour (0xff2f2f2f));
-    g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+    g.setColour (juce::Colour (0xffffaa00));
+    g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
 
-    g.setColour (juce::Colour (0xffe0e0e0));
-    g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
-    g.drawText (text, getLocalBounds().reduced (6, 0),
-                juce::Justification::centredLeft, false);
+    const int titleY = textRow.getY() + 3;
+    g.drawText (text.toUpperCase(),
+                textRow.getX() + 8, titleY,
+                textRow.getWidth() - 8, 12,
+                juce::Justification::centredLeft);
+
+    g.setColour (juce::Colour (0xffffaa00).withAlpha (0.35f));
+    g.fillRect (textRow.getX() + 8, titleY + 13,
+                juce::jmin (textRow.getWidth() - 8, 120), 1);
 }
-
 // ==================== Constructor del editor ====================
 
 PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
@@ -1775,11 +1782,12 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (envArea, envInfo, inner);
 
+        // Tabs de misma altura que los wave selectors de OSC (20px con reduce y 1)
         auto tabRow = inner.removeFromTop (20);
         const int tabW = tabRow.getWidth() / 3;
-        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        env3TabBtn.setBounds (tabRow.reduced (1, 0));
+        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 1));
+        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 1));
+        env3TabBtn.setBounds (tabRow.reduced (1, 1));
         inner.removeFromTop (3);
 
         auto knobRow = inner.removeFromBottom (62);
@@ -1853,7 +1861,7 @@ void PPGWave3Editor::resized()
                    lfo2Rate, lfo2Depth, lfo2Phase);
     }
 
-    // -------- MOD MATRIX --------
+    // -------- MOD MATRIX (4 filas iguales) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
@@ -1870,15 +1878,21 @@ void PPGWave3Editor::resized()
             amt.setBounds (row.reduced (1, 3));
         };
 
+        // Las 4 filas usan removeFromTop(rowH) para que tengan la misma altura
         layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
         layoutRow (inner.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
         layoutRow (inner.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
-        layoutRow (inner,                        *mod4Src, *mod4Dst, mod4Amt);
+        layoutRow (inner.removeFromTop (rowH), *mod4Src, *mod4Dst, mod4Amt);
     }
 
     // ==================== EFFECTS ====================
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
+
+        // Fila superior: InfoDisplay a la derecha (para que se vean los valores)
+        auto infoRow = inner.removeFromTop (18);
+        fxInfo.setBounds (infoRow.removeFromRight (200).reduced (0, 1));
+        inner.removeFromTop (4);
 
         const int colGap = 4;
         const int numCols = 8;
@@ -1995,27 +2009,36 @@ void PPGWave3Editor::resized()
             }
         }
 
-        // EQ
+        // EQ (la curva ocupa todo el espacio libre entre la cabecera y la fila final)
         {
             auto col = fxColumnAreas[6].reduced (6, 6);
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (6);
 
-            const int curveH = juce::jlimit (50, 90,
-                (int) ((float) col.getHeight() * 0.28f));
-            eqCurveDisplay.setBounds (col.removeFromTop (curveH).reduced (0, 1));
-            col.removeFromTop (6);
+            // Reservamos:
+            //   bandRow:  20 px para los botones LOW/LMID/HMID/HIGH
+            //   gap1:      6 px
+            //   gap2:      8 px
+            //   finalRow: 62 px para [HP][FREQ][Q][GAIN][LP]
+            const int bandRowH  = 20;
+            const int finalRowH = 62;
+            const int gap1      = 6;
+            const int gap2      = 8;
 
-            auto bandRow = col.removeFromTop (20);
+            const int curveH = col.getHeight()
+                             - bandRowH - finalRowH - gap1 - gap2;
+
+            eqCurveDisplay.setBounds (col.removeFromTop (juce::jmax (40, curveH))
+                                         .reduced (0, 1));
+            col.removeFromTop (gap1);
+
+            auto bandRow = col.removeFromTop (bandRowH);
             const int bandW = bandRow.getWidth() / 4;
             eqLowBtn .setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqLmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqHmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqHighBtn.setBounds (bandRow.reduced (1, 0));
-            col.removeFromTop (8);
-
-            const int finalRowH = 62;
-            col.removeFromTop (juce::jmax (0, col.getHeight() - finalRowH));
+            col.removeFromTop (gap2);
 
             const int totalW = col.getWidth();
             const int elemGap = 4;
