@@ -1411,7 +1411,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    // Título "EFFECTS" (sin caja, sólo texto + línea sutil)
+    // Título "EFFECTS" (texto dorado + línea sutil)
     if (! fxArea.isEmpty())
     {
         g.setColour (PPGLookAndFeel::accent());
@@ -1452,7 +1452,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     for (int i = 0; i < 8; ++i)
         drawBox (g, fxColumnAreas[i]);
 
-    // Keyboard strip (fondo) SIN título para no chocar con PITCH/MOD
+    // Keyboard strip (solo fondo, sin título)
     if (! keyboardArea.isEmpty())
     {
         const auto r = keyboardArea.toFloat();
