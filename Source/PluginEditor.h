@@ -1,0 +1,324 @@
+#pragma once
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "PluginProcessor.h"
+#include "UI/PPGLookAndFeel.h"
+#include "UI/Visualizers.h"
+#include "Presets/PresetManager.h"
+
+class PPGWave3Editor : public juce::AudioProcessorEditor
+{
+public:
+    explicit PPGWave3Editor (PPGWave3Processor&);
+    ~PPGWave3Editor() override;
+
+    void paint   (juce::Graphics&) override;
+    void resized () override;
+
+private:
+    class InfoDisplay : public juce::Component
+    {
+    public:
+        void setInfo (const juce::String& name, const juce::String& value);
+        void setScale (float s) { scale = s; repaint(); }
+        void paint (juce::Graphics&) override;
+    private:
+        juce::String paramName { "--" };
+        juce::String paramValue;
+        float scale = 1.0f;
+    };
+
+    class RotaryKnob : public juce::Component
+    {
+    public:
+        RotaryKnob (juce::AudioProcessorValueTreeState& apvts,
+                    const juce::String& paramID,
+                    const juce::String& labelText,
+                    InfoDisplay* display);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void setScale (float s);
+    private:
+        juce::Slider  slider;
+        juce::Label   label;
+        InfoDisplay*  infoDisplay = nullptr;
+        juce::String  paramName;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+        float         scale = 1.0f;
+    };
+
+    class HSlider : public juce::Component
+    {
+    public:
+        HSlider (juce::AudioProcessorValueTreeState& apvts,
+                 const juce::String& paramID,
+                 InfoDisplay* display);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void setScale (float s);
+    private:
+        juce::Slider  slider;
+        InfoDisplay*  infoDisplay = nullptr;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+        float         scale = 1.0f;
+    };
+
+    class ButtonSelector : public juce::Component
+    {
+    public:
+        ButtonSelector (juce::AudioProcessorValueTreeState& apvts,
+                        const juce::String& paramID,
+                        const juce::StringArray& names);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void setScale (float s) { scale = s; }
+    private:
+        void refreshFromParameter();
+        juce::AudioProcessorValueTreeState& apvtsRef;
+        juce::String id;
+        juce::OwnedArray<juce::TextButton> buttons;
+        std::unique_ptr<juce::ParameterAttachment> attachment;
+        int currentIndex = 0;
+        float scale = 1.0f;
+    };
+
+    class ComboBoxSelector : public juce::Component
+    {
+    public:
+        ComboBoxSelector (juce::AudioProcessorValueTreeState& apvts,
+                          const juce::String& paramID,
+                          const juce::String& labelText,
+                          InfoDisplay* display);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void setScale (float s);
+    private:
+        juce::ComboBox combo;
+        juce::Label    label;
+        InfoDisplay*   infoDisplay = nullptr;
+        juce::String   paramName;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> attachment;
+        float          scale = 1.0f;
+    };
+
+    class ToggleButton : public juce::Component
+    {
+    public:
+        ToggleButton (juce::AudioProcessorValueTreeState& apvts,
+                      const juce::String& paramID,
+                      const juce::String& labelText,
+                      InfoDisplay* display);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void setScale (float s);
+    private:
+        juce::TextButton button;
+        InfoDisplay*     infoDisplay = nullptr;
+        juce::String     paramName;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
+        float            scale = 1.0f;
+    };
+
+    class EQBandKnob : public juce::Component,
+                       private juce::Timer
+    {
+    public:
+        EQBandKnob (juce::AudioProcessorValueTreeState& apvts,
+                    const juce::StringArray& paramIdsForBands,
+                    const juce::String& labelText,
+                    InfoDisplay* display);
+        ~EQBandKnob() override;
+        void setActiveBand (int band);
+        void setScale (float s);
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+    private:
+        void timerCallback() override;
+        void sliderChanged();
+        void refreshSliderFromParam();
+        void updateInfoText();
+
+        juce::AudioProcessorValueTreeState& apvtsRef;
+        juce::StringArray ids;
+        juce::Slider  slider;
+        juce::Label   label;
+        InfoDisplay*  infoDisplay = nullptr;
+        juce::String  paramName;
+        int           activeBand = 0;
+        bool          updatingFromParam = false;
+        float         scale = 1.0f;
+    };
+
+    class EQCurveDisplay : public juce::Component,
+                           private juce::Timer
+    {
+    public:
+        explicit EQCurveDisplay (juce::AudioProcessorValueTreeState& apvts);
+        ~EQCurveDisplay() override;
+        void paint (juce::Graphics&) override;
+    private:
+        void timerCallback() override;
+        struct Cache
+        {
+            bool  on = true;
+            bool  hpOn = false, lpOn = false;
+            float lowF = 100.0f,  lowQ = 0.707f, lowG = 0.0f;
+            float lmidF = 500.0f, lmidQ = 0.707f, lmidG = 0.0f;
+            float hmidF = 2000.0f, hmidQ = 0.707f, hmidG = 0.0f;
+            float highF = 8000.0f, highQ = 0.707f, highG = 0.0f;
+        };
+        Cache readParams() const;
+        static bool cacheChanged (const Cache& a, const Cache& b);
+
+        juce::AudioProcessorValueTreeState& apvtsRef;
+        Cache cached;
+        bool  hasCached = false;
+        float scale = 1.0f;
+    };
+
+    class PresetDisplay : public juce::Component
+    {
+    public:
+        void setInfo (const juce::String& name, const juce::String& category, bool factory);
+        void paint (juce::Graphics&) override;
+        void mouseDown (const juce::MouseEvent&) override;
+
+        std::function<void()> onOpenMenu;
+    private:
+        juce::String presetName { "Init Saw" };
+        juce::String presetCategory { "Init" };
+        bool isFactory = true;
+    };
+
+    void  drawSection (juce::Graphics& g, juce::Rectangle<int> area,
+                       const juce::String& title) const;
+    void  drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const;
+    float computeScale() const;
+    void  applyScaleToAll (float s);
+
+    void  updatePresetDisplay();
+    void  onPrevPreset();
+    void  onNextPreset();
+    void  onLoadPreset();
+    void  onSavePreset();
+    void  onBrowsePreset();
+
+    void  showPresetMenu();
+    void  onToggleFavorite();
+    void  onToggleFavoritesOnly();
+
+    void  updateFxVisibility();
+    void  updateEnvVisibility();
+    void  setActiveEqBand (int band);
+
+    PPGWave3Processor& processorRef;
+    juce::AudioProcessorValueTreeState& apvts;
+    PPGLookAndFeel ppgLnf;
+
+    presets::PresetManager presetManager;
+
+    // === Preset bar ===
+    juce::TextButton prevBtn, nextBtn;
+    juce::TextButton favoriteBtn;
+    juce::TextButton favoritesOnlyBtn;
+    juce::TextButton loadBtn, saveBtn, browseBtn;
+    PresetDisplay    presetDisplay;
+    std::unique_ptr<juce::FileChooser> fileChooser;
+
+    InfoDisplay osc1Info, osc2Info, filterInfo;
+    InfoDisplay envInfo, masterInfo;
+    InfoDisplay lfoInfo, modInfo, fxInfo;
+
+    std::unique_ptr<ButtonSelector> osc1Wave;
+    ui::WavetablePreview osc1Preview;
+    RotaryKnob osc1Pos, osc1Oct, osc1Semi, osc1Fine, osc1Level;
+    std::unique_ptr<ButtonSelector> osc2Wave;
+    ui::WavetablePreview osc2Preview;
+    RotaryKnob osc2Pos, osc2Oct, osc2Semi, osc2Fine, osc2Level;
+
+    std::unique_ptr<ButtonSelector> filterType;
+    RotaryKnob filterCutoff, filterReso, filterEnvAmt, filterKeyTrack;
+
+    ui::EnvelopeDisplay env1Display, env2Display, env3Display;
+    RotaryKnob env1A, env1D, env1S, env1R;
+    RotaryKnob env2A, env2D, env2S, env2R;
+    RotaryKnob env3A, env3D, env3S, env3R;
+    juce::TextButton env1TabBtn, env2TabBtn, env3TabBtn;
+    int activeEnvTab = 0;
+
+    RotaryKnob master;
+    ui::LevelMeter masterMeter;
+
+    std::unique_ptr<ComboBoxSelector> lfo1Wave;
+    ui::LFODisplay lfo1Display;
+    RotaryKnob lfo1Rate, lfo1Depth, lfo1Phase;
+    std::unique_ptr<ComboBoxSelector> lfo1Sync;
+
+    std::unique_ptr<ComboBoxSelector> lfo2Wave;
+    ui::LFODisplay lfo2Display;
+    RotaryKnob lfo2Rate, lfo2Depth, lfo2Phase;
+    std::unique_ptr<ComboBoxSelector> lfo2Sync;
+
+    std::unique_ptr<ComboBoxSelector> mod1Src, mod1Dst;  HSlider mod1Amt;
+    std::unique_ptr<ComboBoxSelector> mod2Src, mod2Dst;  HSlider mod2Amt;
+    std::unique_ptr<ComboBoxSelector> mod3Src, mod3Dst;  HSlider mod3Amt;
+    std::unique_ptr<ComboBoxSelector> mod4Src, mod4Dst;  HSlider mod4Amt;
+
+    // ===== FX — 8 tabs (FASE 11 añade COMP) =====
+    // Orden visual: DIST | CHORUS | PHASER | DELAY | REVERB | VINTAGE | EQ | COMP
+    // Índices:      0       1        2        3       4        5         6    7
+    juce::TextButton driveTabBtn, chorusTabBtn, phaserTabBtn;
+    juce::TextButton delayTabBtn, reverbTabBtn, vintageTabBtn, eqTabBtn, compTabBtn;
+    int activeFxTab = 0;
+
+    // FX — Drive
+    std::unique_ptr<ToggleButton> driveOn;
+    RotaryKnob driveAmount, driveTone, driveMix;
+    // FX — Chorus
+    std::unique_ptr<ToggleButton> chorusOn;
+    RotaryKnob chorusRate, chorusDepth, chorusMix;
+    // FX — Delay
+    std::unique_ptr<ToggleButton> delayOn;
+    std::unique_ptr<ComboBoxSelector> delaySync;
+    RotaryKnob delayTime, delayFeedback, delayMix;
+    // FX — Reverb
+    std::unique_ptr<ToggleButton> reverbOn;
+    RotaryKnob reverbSize, reverbDamp, reverbMix;
+
+    // FX — Vintage
+    std::unique_ptr<ToggleButton> vintageOn;
+    RotaryKnob vintageAmount, vintageBits, vintageSr;
+    RotaryKnob vintageNoise, vintageDrift, vintageVar;
+
+    // FX — EQ
+    std::unique_ptr<ToggleButton> eqOn;
+    std::unique_ptr<ToggleButton> eqHpOn, eqLpOn;
+    juce::TextButton eqLowBtn, eqLmidBtn, eqHmidBtn, eqHighBtn;
+    EQBandKnob eqFreqKnob, eqQKnob, eqGainKnob;
+    EQCurveDisplay eqCurveDisplay;
+    int activeEqBand = 0;
+
+    // FX — Phaser
+    std::unique_ptr<ToggleButton> phaserOn;
+    RotaryKnob phaserRate, phaserDepth, phaserFeedback, phaserMix;
+
+    // FX — Compressor (FASE 11)
+    std::unique_ptr<ToggleButton> compOn;
+    std::unique_ptr<ToggleButton> compSidechain;
+    RotaryKnob compThreshold, compRatio, compAttack, compRelease;
+    RotaryKnob compKnee, compMakeup, compScAmount;
+
+    juce::MidiKeyboardComponent keyboardComponent;
+    juce::Slider pitchWheelSlider;
+    juce::Slider modWheelSlider;
+    juce::Label  pitchWheelLabel, modWheelLabel;
+
+    juce::Rectangle<int> osc1Area, osc2Area, filterArea;
+    juce::Rectangle<int> lfoArea, modArea, fxArea;
+    juce::Rectangle<int> envArea, masterArea;
+    juce::Rectangle<int> keyboardArea, wheelsArea;
+    juce::Rectangle<int> presetBarArea;
+
+    float currentScale = 1.0f;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PPGWave3Editor)
+};
