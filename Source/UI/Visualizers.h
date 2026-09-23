@@ -6,7 +6,7 @@
 namespace ui
 {
     // ============================================================
-    // WavetablePreview — usa Timer a 30Hz para detectar cambios.
+    // WavetablePreview
     // ============================================================
     class WavetablePreview : public juce::Component,
                              private juce::Timer
@@ -69,7 +69,7 @@ namespace ui
     };
 
     // ============================================================
-    // LevelMeter
+    // LevelMeter (vertical, original)
     // ============================================================
     class LevelMeter : public juce::Component, private juce::Timer
     {
@@ -79,6 +79,28 @@ namespace ui
     private:
         void timerCallback() override;
         std::atomic<float>& level;
+        float smoothed = 0.0f;
+    };
+
+    // ============================================================
+    // HorizontalMeter (FASE 7.1a)
+    // Barra horizontal. Modo normal: fill de izquierda a derecha.
+    // Modo GR (gain reduction): fill de izquierda a derecha, pero
+    // el valor representa reducción (0 = sin reducción, 1 = -30 dB).
+    // ============================================================
+    class HorizontalMeter : public juce::Component, private juce::Timer
+    {
+    public:
+        HorizontalMeter (std::atomic<float>& levelSource,
+                         const juce::String& labelText = {},
+                         bool gainReductionMode = false);
+        void paint (juce::Graphics&) override;
+    private:
+        void timerCallback() override;
+
+        std::atomic<float>& level;
+        juce::String label;
+        bool grMode = false;
         float smoothed = 0.0f;
     };
 }
