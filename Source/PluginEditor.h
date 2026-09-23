@@ -245,7 +245,7 @@ private:
     juce::TextButton env1TabBtn, env2TabBtn, env3TabBtn;
     int activeEnvTab = 0;
 
-    // === FASE 7.1a: MASTER + 2 VU meters en el header ===
+    // MASTER + 2 VU meters en el header
     RotaryKnob master;
     ui::HorizontalMeter masterHztMeter, compGrMeter;
 
@@ -311,12 +311,14 @@ private:
     juce::Slider modWheelSlider;
     juce::Label  pitchWheelLabel, modWheelLabel;
 
+    // Áreas de layout
     juce::Rectangle<int> osc1Area, osc2Area, filterArea;
-    juce::Rectangle<int> lfoArea, modArea, fxArea;
     juce::Rectangle<int> envArea;
+    juce::Rectangle<int> lfoArea, modArea;
+    juce::Rectangle<int> seqReservedArea;   // hueco reservado para el secuenciador
+    juce::Rectangle<int> fxArea;
     juce::Rectangle<int> headerLogoArea;
     juce::Rectangle<int> keyboardArea, wheelsArea;
-    juce::Rectangle<int> presetBarArea;
 
     float currentScale = 1.0f;
 
