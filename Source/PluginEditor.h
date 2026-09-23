@@ -189,6 +189,31 @@ private:
         bool isFactory = true;
     };
 
+    // ===== FASE 7.1c: tab de efecto con indicador ON/OFF integrado =====
+    class FxTab : public juce::Component
+    {
+    public:
+        FxTab (juce::AudioProcessorValueTreeState& apvts,
+               const juce::String& toggleParamId,
+               const juce::String& label);
+
+        void setSelected (bool s);
+        bool isSelected() const { return selected; }
+
+        void resized() override;
+        void paint   (juce::Graphics&) override;
+        void mouseDown (const juce::MouseEvent&) override;
+
+        std::function<void()> onSelect;
+
+    private:
+        juce::String text;
+        bool selected = false;
+
+        juce::TextButton toggleBtn;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
+    };
+
     void  drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                        const juce::String& title) const;
     void  drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const;
@@ -264,44 +289,32 @@ private:
     std::unique_ptr<ComboBoxSelector> mod3Src, mod3Dst;  HSlider mod3Amt;
     std::unique_ptr<ComboBoxSelector> mod4Src, mod4Dst;  HSlider mod4Amt;
 
-    // FX — 8 tabs
-    juce::TextButton driveTabBtn, chorusTabBtn, phaserTabBtn;
-    juce::TextButton delayTabBtn, reverbTabBtn, vintageTabBtn, eqTabBtn, compTabBtn;
+    // FX — tabs con indicador ON/OFF integrado
+    std::unique_ptr<FxTab> driveTab, chorusTab, phaserTab;
+    std::unique_ptr<FxTab> delayTab, reverbTab, vintageTab, eqTab, compTab;
     int activeFxTab = 0;
 
     // FX — Drive
-    std::unique_ptr<ToggleButton> driveOn;
     RotaryKnob driveAmount, driveTone, driveMix;
     // FX — Chorus
-    std::unique_ptr<ToggleButton> chorusOn;
     RotaryKnob chorusRate, chorusDepth, chorusMix;
     // FX — Delay
-    std::unique_ptr<ToggleButton> delayOn;
     std::unique_ptr<ComboBoxSelector> delaySync;
     RotaryKnob delayTime, delayFeedback, delayMix;
     // FX — Reverb
-    std::unique_ptr<ToggleButton> reverbOn;
     RotaryKnob reverbSize, reverbDamp, reverbMix;
-
     // FX — Vintage
-    std::unique_ptr<ToggleButton> vintageOn;
     RotaryKnob vintageAmount, vintageBits, vintageSr;
     RotaryKnob vintageNoise, vintageDrift, vintageVar;
-
     // FX — EQ
-    std::unique_ptr<ToggleButton> eqOn;
     std::unique_ptr<ToggleButton> eqHpOn, eqLpOn;
     juce::TextButton eqLowBtn, eqLmidBtn, eqHmidBtn, eqHighBtn;
     EQBandKnob eqFreqKnob, eqQKnob, eqGainKnob;
     EQCurveDisplay eqCurveDisplay;
     int activeEqBand = 0;
-
     // FX — Phaser
-    std::unique_ptr<ToggleButton> phaserOn;
     RotaryKnob phaserRate, phaserDepth, phaserFeedback, phaserMix;
-
     // FX — Compressor
-    std::unique_ptr<ToggleButton> compOn;
     std::unique_ptr<ToggleButton> compSidechain;
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
     RotaryKnob compKnee, compMakeup, compScAmount;
@@ -311,11 +324,10 @@ private:
     juce::Slider modWheelSlider;
     juce::Label  pitchWheelLabel, modWheelLabel;
 
-    // Áreas de layout
     juce::Rectangle<int> osc1Area, osc2Area, filterArea;
     juce::Rectangle<int> envArea;
     juce::Rectangle<int> lfoArea, modArea;
-    juce::Rectangle<int> seqReservedArea;   // hueco reservado para el secuenciador
+    juce::Rectangle<int> seqReservedArea;
     juce::Rectangle<int> fxArea;
     juce::Rectangle<int> headerLogoArea;
     juce::Rectangle<int> keyboardArea, wheelsArea;
