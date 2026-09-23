@@ -30,11 +30,9 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const float trackThickness   = juce::jmax (2.0f, radius * 0.16f);
     const float pointerThickness = juce::jmax (1.5f, radius * 0.09f);
 
-    // Colores según estado
     const juce::Colour fillColour   = enabled ? accent()       : juce::Colour (0xff333333);
     const juce::Colour pointerColour = enabled ? accentBright() : juce::Colour (0xff555555);
 
-    // 1. Track
     juce::Path track;
     track.addCentredArc (centre.x, centre.y,
                          radius - trackThickness * 0.5f,
@@ -45,7 +43,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                juce::PathStrokeType::curved,
                                                juce::PathStrokeType::rounded));
 
-    // 2. Fill
     juce::Path fill;
     fill.addCentredArc (centre.x, centre.y,
                         radius - trackThickness * 0.5f,
@@ -56,7 +53,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                               juce::PathStrokeType::curved,
                                               juce::PathStrokeType::rounded));
 
-    // 3. Círculo interior
     const auto innerRadius = radius - trackThickness - 2.0f;
     if (innerRadius > 1.0f)
     {
@@ -69,7 +65,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                        innerRadius * 2.0f, innerRadius * 2.0f, 1.0f);
     }
 
-    // 4. Puntero
     const float pointerLength = innerRadius * 0.85f;
     juce::Path pointer;
     pointer.startNewSubPath (0.0f, -innerRadius * 0.30f);
@@ -194,8 +189,11 @@ void PPGLookAndFeel::drawButtonText (juce::Graphics& g,
     const auto bounds = button.getLocalBounds();
     const bool isOn   = button.getToggleState();
 
-    g.setFont (juce::Font (juce::FontOptions (juce::jmax (9.0f, (float) bounds.getHeight() * 0.55f),
-                                              juce::Font::bold)));
+    // Tope: nunca más de 11.5px de fuente aunque el botón sea alto.
+    const float fontSize = juce::jlimit (8.0f, 11.5f,
+                                         (float) bounds.getHeight() * 0.55f);
+
+    g.setFont (juce::Font (juce::FontOptions (fontSize, juce::Font::bold)));
     g.setColour (isOn ? juce::Colours::black : textPrimary());
 
     g.drawFittedText (button.getButtonText(), bounds, juce::Justification::centred, 1);
@@ -226,24 +224,22 @@ void PPGLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height,
 
 juce::Font PPGLookAndFeel::getComboBoxFont (juce::ComboBox& box)
 {
-    return juce::Font (juce::FontOptions (juce::jlimit (10.0f, 14.0f,
+    return juce::Font (juce::FontOptions (juce::jlimit (10.0f, 13.0f,
                                        (float) box.getHeight() * 0.55f)));
 }
 
 juce::Font PPGLookAndFeel::getTextButtonFont (juce::TextButton&, int buttonHeight)
 {
-    return juce::Font (juce::FontOptions (juce::jlimit (9.0f, 14.0f,
+    return juce::Font (juce::FontOptions (juce::jlimit (9.0f, 11.5f,
                                        (float) buttonHeight * 0.5f),
                                           juce::Font::bold));
 }
 
-// FASE 6.6: fuente legible para los menús desplegables.
 juce::Font PPGLookAndFeel::getPopupMenuFont()
 {
     return juce::Font (juce::FontOptions (14.0f));
 }
 
-// FASE 6.6: alto y ancho de cada item del popup (si no, el texto se ve diminuto).
 void PPGLookAndFeel::getIdealPopupMenuItemSize (const juce::String& text, bool isSeparator,
                                                 int /*standardMenuItemHeight*/,
                                                 int& idealWidth, int& idealHeight)
