@@ -1473,6 +1473,8 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.fillRect (top.getX(), top.getBottom() - 1, top.getWidth(), 1);
     }
 
+    drawLogo (g, headerLogoArea.reduced (10, 6));
+
     drawSection (g, osc1Area,    "OSCILLATOR 1");
     drawSection (g, osc2Area,    "OSCILLATOR 2");
     drawSection (g, filterArea,  "FILTER");
@@ -1531,7 +1533,6 @@ void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
 
 void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const
 {
-    // FASE 7.1a: nuevo logo OML / Open Morph Labs en dos líneas.
     const float h = (float) area.getHeight();
 
     auto topRow = area.removeFromTop (juce::roundToInt (h * 0.62f));
@@ -1567,16 +1568,15 @@ void PPGWave3Editor::resized()
 
         // --- Zona izquierda: logo OML ---
         auto logoZone = h.removeFromLeft (170);
-        drawLogoCacheArea = logoZone;   // guardamos para paint()
+        headerLogoArea = logoZone;
         h.removeFromLeft (8);
 
         // --- Zona central: preset bar ---
         auto presetZone = h;
 
         // Layout del master zone:
-        // [MASTER label 14px]
-        // [knob 62x62] [gap 8] [meters column: GR 26 / gap 4 / MST 26]
-        masterZone.removeFromTop (12);   // reservamos para la etiqueta "MASTER" (dibujada en paint del knob)
+        // [gap 12] [knob 62x62] [gap 8] [meters column: GR / gap / MST]
+        masterZone.removeFromTop (12);
         const int innerH = masterZone.getHeight();
 
         auto knobArea = masterZone.removeFromLeft (72);
@@ -1663,7 +1663,6 @@ void PPGWave3Editor::resized()
     modArea = r.removeFromTop (modH);           r.removeFromTop (gap);
     fxArea  = r.removeFromTop (fxH);            r.removeFromTop (gap);
 
-    // FASE 7.1a: la fila inferior es SOLO envelopes (el master subió al header).
     envArea = r;
 
     auto infoWidthFor = [] (int sectionW)
@@ -1946,7 +1945,7 @@ void PPGWave3Editor::resized()
         }
     }
 
-    // Envelopes (ahora ocupan todo el ancho)
+    // Envelopes (a todo el ancho)
     {
         juce::Rectangle<int> inner;
         titleRowFor (envArea, envInfo, inner);
