@@ -7,17 +7,14 @@ namespace dsp
         sr       = sampleRate;
         maxBlock = maxBlockSize;
 
-        // Drive
         toneL.prepare ({ sampleRate, (juce::uint32) maxBlockSize, 1 });
         toneR.prepare ({ sampleRate, (juce::uint32) maxBlockSize, 1 });
         toneL.reset();
         toneR.reset();
 
-        // Chorus
         chorus.prepare ({ sampleRate, (juce::uint32) maxBlockSize, 2 });
         chorus.reset();
 
-        // Delay
         juce::dsp::ProcessSpec spec { sampleRate, (juce::uint32) maxBlockSize, 1 };
         delayL.prepare (spec);
         delayR.prepare (spec);
@@ -26,10 +23,8 @@ namespace dsp
         delayL.reset();
         delayR.reset();
 
-        // Reverb
         reverb.setSampleRate (sampleRate);
 
-        // EQ
         {
             juce::dsp::ProcessSpec monoSpec { sampleRate, (juce::uint32) maxBlockSize, 1 };
             eqL.prepare (monoSpec);
@@ -74,18 +69,15 @@ namespace dsp
             }
         }
 
-        // Phaser
         phaser.prepare ({ sampleRate, (juce::uint32) maxBlockSize, 2 });
         phaser.reset();
         phaser.setCentreFrequency (1000.0f);
 
-        // Vintage
         heldL = 0.0f;
         heldR = 0.0f;
         srCounter = 1.0f;
         vintageRng.setSeed (0x5A17F00Du);
 
-        // Compressor
         compEnvelope    = 0.0f;
         compLastAttack  = -1.0f;
         compLastRelease = -1.0f;
@@ -131,8 +123,6 @@ namespace dsp
         compLastRelease = compRelease;
         compLastSr      = sr;
     }
-
-    // ============ Setters ============
 
     void Effects::setChorus (bool on, float rate, float depth, float mix)
     {
@@ -261,7 +251,8 @@ namespace dsp
                                  float thresholdDb, float ratio,
                                  float attackMs, float releaseMs,
                                  float kneeDb, float makeupDb,
-                                 bool sidechainOn, float scAmount)
+                                 bool sidechainOn, float scAmount,
+                                 std::atomic<float>* grOutPtr)
     {
         compOn        = on;
         compThreshold = juce::jlimit (-60.0f, 0.0f,   thresholdDb);
@@ -272,14 +263,12 @@ namespace dsp
         compMakeup    = juce::jlimit (0.0f,  24.0f,   makeupDb);
         compSidechain = sidechainOn;
         compScAmount  = juce::jlimit (0.0f,  1.0f,    scAmount);
+        compGrOut     = grOutPtr;
 
         computeCompCoeffs();
     }
 
-    // ============ Procesado principal ============
-
-    void Effects::process (juce::AudioBuffer<float>& buffer,
-                           const juce::AudioBuffer<float>* sidechain)
+    void Effects::process (juce::AudioBuffer<float>& buffer)
     {
         const int numSamples = buffer.getNumSamples();
         if (numSamples <= 0) return;
@@ -431,40 +420,20 @@ namespace dsp
             const float ratio       = juce::jmax (1.0f, compRatio);
             const float knee        = juce::jmax (0.0f, compKnee);
             const float invRatio    = 1.0f / ratio;
-            const float scAmt       = compScAmount;
 
-            const bool useSc = compSidechain
-                            && sidechain != nullptr
-                            && sidechain->getNumChannels() > 0
-                            && sidechain->getNumSamples() >= numSamples;
-
-            const float* scL = useSc ? sidechain->getReadPointer (0) : nullptr;
-            const float* scR = (useSc && sidechain->getNumChannels() > 1)
-                                ? sidechain->getReadPointer (1) : nullptr;
+            float maxReductionDb = 0.0f;
 
             for (int i = 0; i < numSamples; ++i)
             {
                 const float mainL = std::abs (L[i]);
                 const float mainR = R ? std::abs (R[i]) : mainL;
-                float detector = juce::jmax (mainL, mainR);
+                const float detector = juce::jmax (mainL, mainR);
 
-                if (useSc)
-                {
-                    const float scAbsL = std::abs (scL[i]);
-                    const float scAbsR = (scR != nullptr) ? std::abs (scR[i]) : scAbsL;
-                    const float scDet  = juce::jmax (scAbsL, scAbsR);
-
-                    // Mezcla entre self y sidechain según scAmt.
-                    detector = detector * (1.0f - scAmt) + scDet * scAmt;
-                }
-
-                // Envelope follower (attack/release)
                 if (detector > compEnvelope)
                     compEnvelope = detector + attackCoef  * (compEnvelope - detector);
                 else
                     compEnvelope = detector + releaseCoef * (compEnvelope - detector);
 
-                // Cálculo de reducción de ganancia en dB
                 const float envDb = juce::Decibels::gainToDecibels (compEnvelope, -100.0f);
                 float reductionDb = 0.0f;
 
@@ -489,12 +458,30 @@ namespace dsp
                     }
                 }
 
+                if (reductionDb > maxReductionDb)
+                    maxReductionDb = reductionDb;
+
                 const float gainDb  = -reductionDb + compMakeup;
                 const float gainLin = juce::Decibels::decibelsToGain (gainDb);
 
                 L[i] *= gainLin;
                 if (R) R[i] *= gainLin;
             }
+
+            // Publicar el valor máximo de GR del bloque (normalizado 0..1).
+            if (compGrOut != nullptr)
+            {
+                const float norm = juce::jlimit (0.0f, 1.0f, maxReductionDb / 30.0f);
+                // Decaimiento suave para que el meter no parpadee.
+                const float prev = compGrOut->load();
+                const float next = (norm > prev) ? norm : prev * 0.85f + norm * 0.15f;
+                compGrOut->store (next);
+            }
+        }
+        else
+        {
+            if (compGrOut != nullptr)
+                compGrOut->store (compGrOut->load() * 0.9f);
         }
     }
 }
