@@ -35,16 +35,19 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    // BPM compartido con las voces (para sync de LFOs y Delay).
+    // BPM compartido con las voces.
     std::atomic<double> currentBpm { 120.0 };
 
-    // Nivel de pico de la última pasada (para el VU meter).
+    // Nivel de pico de la última pasada (para el VU master).
     std::atomic<float> peakLevel { 0.0f };
 
-    // ===== FASE 6.8: Teclado virtual + Pitch/Mod wheels =====
+    // FASE 7.1a: gain reduction del compresor (normalizado 0..1).
+    std::atomic<float> compressorGR { 0.0f };
+
+    // Teclado virtual + Pitch/Mod wheels.
     juce::MidiKeyboardState keyboardState;
-    std::atomic<float> pitchBendAtomic { 0.0f };   // -1 .. +1
-    std::atomic<float> modWheelAtomic  { 0.0f };   //  0 .. +1
+    std::atomic<float> pitchBendAtomic { 0.0f };
+    std::atomic<float> modWheelAtomic  { 0.0f };
 
 private:
     juce::Synthesiser synth;
