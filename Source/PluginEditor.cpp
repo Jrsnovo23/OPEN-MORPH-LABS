@@ -656,8 +656,6 @@ PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
 void PPGWave3Editor::FxTab::resized()
 {
     auto r = getLocalBounds();
-
-    // Toggle ON/OFF a la derecha, compacto (14×14 aprox)
     auto indicatorArea = r.removeFromRight (18).reduced (2, 4);
     toggleBtn.setBounds (indicatorArea);
 }
@@ -666,9 +664,8 @@ void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds();
 
-    // Nombre estilo "título de sección" del bloque superior
     auto textRow = r;
-    textRow.removeFromRight (18);   // hueco del toggle
+    textRow.removeFromRight (18);
 
     g.setColour (juce::Colour (0xffffaa00));
     g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
@@ -683,6 +680,7 @@ void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
     g.fillRect (textRow.getX() + 8, titleY + 13,
                 juce::jmin (textRow.getWidth() - 8, 120), 1);
 }
+
 // ==================== Constructor del editor ====================
 
 PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
@@ -822,7 +820,6 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
 {
     juce::ignoreUnused (processorRef, apvts);
 
-    // === Preset bar ===
     prevBtn.setConnectedEdges (juce::Button::ConnectedOnRight);
     nextBtn.setConnectedEdges (juce::Button::ConnectedOnLeft);
 
@@ -899,7 +896,6 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     setActiveEqBand (0);
     addAndMakeVisible (eqCurveDisplay);
 
-    // Teclado virtual
     keyboardComponent.setAvailableRange (24, 108);
     keyboardComponent.setLowestVisibleKey (24);
     keyboardComponent.setScrollButtonsVisible (false);
@@ -1151,8 +1147,6 @@ void PPGWave3Editor::showPresetMenu()
         });
 }
 
-// ==================== Botones ★ y FAV ====================
-
 void PPGWave3Editor::onToggleFavorite()
 {
     const auto name = presetManager.getCurrentName();
@@ -1173,11 +1167,11 @@ void PPGWave3Editor::onToggleFavoritesOnly()
     favoritesOnlyBtn.setToggleState (newState, juce::dontSendNotification);
 }
 
-// ==================== FX Tab visibility (todo siempre visible) ====================
+// ==================== FX Tab visibility ====================
 
 void PPGWave3Editor::updateFxVisibility()
 {
-    // Ya no hay ocultamiento. Todo siempre a la vista.
+    // Todo siempre visible. No hay nada que ocultar.
 }
 
 // ==================== Env Tab visibility ====================
@@ -1411,7 +1405,6 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    // Título "EFFECTS" (texto dorado + línea sutil)
     if (! fxArea.isEmpty())
     {
         g.setColour (PPGLookAndFeel::accent());
@@ -1448,25 +1441,6 @@ void PPGWave3Editor::paint (juce::Graphics& g)
                     seqReservedArea, juce::Justification::centred);
     }
 
-    // Cajas de cada columna FX
-    for (int i = 0; i < 8; ++i)
-        drawBox (g, fxColumnAreas[i]);
-
-    // Keyboard strip (solo fondo, sin título)
-    if (! keyboardArea.isEmpty())
-    {
-        const auto r = keyboardArea.toFloat();
-        juce::ColourGradient grad (juce::Colour (0xff1c1c1c), r.getX(), r.getY(),
-                                   juce::Colour (0xff151515), r.getX(), r.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (r, 4.0f);
-
-        g.setColour (juce::Colour (0xff2f2f2f));
-        g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
-    }
-}
-
-    // === Bloque FX: cada columna con su caja ===
     for (int i = 0; i < 8; ++i)
         drawBox (g, fxColumnAreas[i]);
 
@@ -1480,16 +1454,10 @@ void PPGWave3Editor::paint (juce::Graphics& g)
 
         g.setColour (juce::Colour (0xff2f2f2f));
         g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
-
-        g.setColour (PPGLookAndFeel::accent());
-        g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
-        g.drawText ("KEYBOARD", keyboardArea.getX() + 8, keyboardArea.getY() + 3,
-                    200, 12, juce::Justification::centredLeft);
-
-        g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
-        g.fillRect (keyboardArea.getX() + 8, keyboardArea.getY() + 16, 200, 1);
     }
 }
+
+// ==================== drawSection ====================
 
 void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                                   const juce::String& title) const
@@ -1518,6 +1486,8 @@ void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                 juce::jmin (titleW, 200), 1);
 }
 
+// ==================== drawBox ====================
+
 void PPGWave3Editor::drawBox (juce::Graphics& g, juce::Rectangle<int> area) const
 {
     if (area.isEmpty()) return;
@@ -1531,6 +1501,8 @@ void PPGWave3Editor::drawBox (juce::Graphics& g, juce::Rectangle<int> area) cons
     g.setColour (juce::Colour (0xff2f2f2f));
     g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
 }
+
+// ==================== drawLogo ====================
 
 void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const
 {
@@ -1550,7 +1522,7 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
     g.drawText ("Open Morph Labs", a, juce::Justification::centredLeft, false);
 }
 
-// ==================== Helpers de layout ====================
+// ==================== Helpers ====================
 
 void PPGWave3Editor::layoutKnobStack (juce::Rectangle<int> col,
                                       std::initializer_list<juce::Component*> knobs,
@@ -1559,7 +1531,7 @@ void PPGWave3Editor::layoutKnobStack (juce::Rectangle<int> col,
     const int n = (int) knobs.size();
     if (n == 0) return;
 
-    auto* arr = const_cast<juce::Component**> (knobs.begin());
+    juce::Component** arr = const_cast<juce::Component**> (knobs.begin());
 
     int usedH = n * itemHeight;
     if (usedH > col.getHeight())
@@ -1580,14 +1552,13 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
     const int n = (int) knobs.size();
     if (n == 0) return;
 
-    auto* arr = const_cast<juce::Component**> (knobs.begin());
+    juce::Component** arr = const_cast<juce::Component**> (knobs.begin());
 
     int usedH = n * itemHeight;
     if (usedH > col.getHeight())
         itemHeight = col.getHeight() / n;
     usedH = n * itemHeight;
 
-    // Los knobs quedan pegados al fondo
     col.removeFromTop (col.getHeight() - usedH);
 
     for (int i = 0; i < n; ++i)
@@ -1603,7 +1574,7 @@ void PPGWave3Editor::resized()
 
     auto r = getLocalBounds();
 
-    // ===== Header =====
+    // ===== Header (42px) =====
     auto header = r.removeFromTop (42);
     {
         auto h = header.reduced (8, 4);
@@ -1919,8 +1890,6 @@ void PPGWave3Editor::resized()
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
-        // Fila superior: sólo el InfoDisplay, alineado a la derecha
-        // (el texto "EFFECTS" se dibuja en paint() a la izquierda de esta fila)
         auto titleRow = inner.removeFromTop (16);
         fxInfo.setBounds (titleRow.removeFromRight (180).reduced (0, 0));
         inner.removeFromTop (4);
@@ -2040,14 +2009,14 @@ void PPGWave3Editor::resized()
             }
         }
 
-        // EQ: curva ocupa todo el espacio libre
+        // EQ
         {
             auto col = fxColumnAreas[6].reduced (6, 6);
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (6);
 
             const int bandRowH  = 20;
-            const int finalRowH = 20;    // HP/knobs/LP bajan a 20px
+            const int finalRowH = 20;
             const int gap1      = 6;
             const int gap2      = 8;
 
@@ -2070,7 +2039,6 @@ void PPGWave3Editor::resized()
             const int elemGap = 4;
             const int elemW = (totalW - 4 * elemGap) / 5;
 
-            // HP: ahora 20px de alto como LOW/LMID/HMID/HIGH
             eqHpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 20));
 
@@ -2111,7 +2079,6 @@ void PPGWave3Editor::resized()
             for (int i = 0; i < nL; ++i)
                 arrL[i]->setBounds (leftSub.removeFromTop (hL).reduced (1, 2));
 
-            // SC baja a 20px de alto, manteniendo 48 de ancho
             auto scArea = rightSub.removeFromBottom (24);
             compSidechain->setBounds (scArea.withSizeKeepingCentre (48, 20));
             rightSub.removeFromBottom (4);
