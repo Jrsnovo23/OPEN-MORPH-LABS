@@ -656,31 +656,29 @@ PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
 void PPGWave3Editor::FxTab::resized()
 {
     auto r = getLocalBounds();
-    auto indicatorArea = r.removeFromRight (18).reduced (2, 4);
-    toggleBtn.setBounds (indicatorArea);
+    // El toggle va en la mitad inferior del FxTab (fila de 20px)
+    auto bottomRow = r.removeFromBottom (20);
+    toggleBtn.setBounds (bottomRow.reduced (2, 2));
 }
 
 void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds();
+    r.removeFromBottom (20);   // reservamos la fila del toggle
 
-    auto textRow = r;
-    textRow.removeFromRight (18);
-
+    // Título (arriba a la izquierda). El InfoDisplay se dibujará encima en la mitad derecha.
     g.setColour (juce::Colour (0xffffaa00));
     g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
 
-    const int titleY = textRow.getY() + 3;
     g.drawText (text.toUpperCase(),
-                textRow.getX() + 8, titleY,
-                textRow.getWidth() - 8, 12,
+                r.getX() + 8, r.getY() + 3,
+                r.getWidth() - 8, 12,
                 juce::Justification::centredLeft);
 
     g.setColour (juce::Colour (0xffffaa00).withAlpha (0.35f));
-    g.fillRect (textRow.getX() + 8, titleY + 13,
-                juce::jmin (textRow.getWidth() - 8, 120), 1);
+    g.fillRect (r.getX() + 8, r.getY() + 16,
+                juce::jmin (r.getWidth() - 8, 100), 1);
 }
-
 // ==================== Constructor del editor ====================
 
 PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
@@ -1407,18 +1405,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    if (! fxArea.isEmpty())
-    {
-        g.setColour (PPGLookAndFeel::accent());
-        g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale,
-                                                  juce::Font::bold)));
-        g.drawText ("EFFECTS",
-                    fxArea.getX() + 8, fxArea.getY() + 3, 200, 12,
-                    juce::Justification::centredLeft);
-
-        g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
-        g.fillRect (fxArea.getX() + 8, fxArea.getY() + 16, 200, 1);
-    }
+    // NOTA: ya no se dibuja el título "EFFECTS" (cada columna tiene el suyo).
 
     if (! seqReservedArea.isEmpty())
     {
@@ -1882,13 +1869,9 @@ void PPGWave3Editor::resized()
         layoutRow (inner.removeFromTop (rowH), *mod4Src, *mod4Dst, mod4Amt);
     }
 
-    // ==================== EFFECTS ====================
+        // ==================== EFFECTS ====================
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
-
-        // Fila superior: título EFFECTS arriba + hueco para que paint() lo dibuje
-        inner.removeFromTop (16);
-        inner.removeFromTop (4);
 
         const int colGap = 4;
         const int numCols = 8;
@@ -1910,18 +1893,25 @@ void PPGWave3Editor::resized()
             x += w + colGap;
         }
 
-        const int headerH = 22;
-        const int infoH   = 16;
+        // Cabecera de cada columna: FxTab ocupa 40px (título arriba, toggle abajo).
+        const int headerH = 40;
+        const int toggleRowH = 20;
 
-        // Helper: cabecera + InfoDisplay + knobs (distribuidos uniformemente)
         auto layoutCol = [&] (int idx, FxTab& tab, InfoDisplay& info,
                               std::initializer_list<juce::Component*> knobs)
         {
             auto col = fxColumnAreas[idx].reduced (6, 6);
-            tab.setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            info.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            tab.setBounds (headerArea);
+
+            // InfoDisplay en la mitad derecha de la fila superior del header
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            info.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             const int n = (int) knobs.size();
             if (n == 0) return;
@@ -1943,10 +1933,16 @@ void PPGWave3Editor::resized()
         // ---- PHASER (2×2) ----
         {
             auto col = fxColumnAreas[2].reduced (6, 6);
-            phaserTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            fxInfoPhaser.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            phaserTab->setBounds (headerArea);
+
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            fxInfoPhaser.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             const int halfH = col.getHeight() / 2;
             auto row1 = col.removeFromTop (halfH);
@@ -1964,10 +1960,16 @@ void PPGWave3Editor::resized()
         // ---- DELAY ----
         {
             auto col = fxColumnAreas[3].reduced (6, 6);
-            delayTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            fxInfoDelay.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            delayTab->setBounds (headerArea);
+
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            fxInfoDelay.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             delaySync->setBounds (col.removeFromTop (26));
             col.removeFromTop (6);
@@ -1990,10 +1992,16 @@ void PPGWave3Editor::resized()
         // ---- VINTAGE (2 sub-columnas) ----
         {
             auto col = fxColumnAreas[5].reduced (6, 6);
-            vintageTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            fxInfoVintage.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            vintageTab->setBounds (headerArea);
+
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            fxInfoVintage.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
@@ -2025,13 +2033,19 @@ void PPGWave3Editor::resized()
         // ---- EQ ----
         {
             auto col = fxColumnAreas[6].reduced (6, 6);
-            eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            fxInfoEq.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            eqTab->setBounds (headerArea);
+
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            fxInfoEq.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             const int bandRowH  = 20;
-            const int finalRowH = 65;   // ← HP/FREQ/Q/GAIN/LP más altos
+            const int finalRowH = 65;
             const int gap1      = 6;
             const int gap2      = 8;
 
@@ -2054,7 +2068,6 @@ void PPGWave3Editor::resized()
             const int elemGap = 4;
             const int elemW = (totalW - 4 * elemGap) / 5;
 
-            // HP / LP más pequeños (20px, centrados verticalmente)
             eqHpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 20));
             col.removeFromLeft (elemGap);
@@ -2071,10 +2084,16 @@ void PPGWave3Editor::resized()
         // ---- COMP ----
         {
             auto col = fxColumnAreas[7].reduced (6, 6);
-            compTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (3);
-            fxInfoComp.setBounds (col.removeFromTop (infoH).reduced (0, 1));
-            col.removeFromTop (4);
+            const int colW = col.getWidth();
+
+            auto headerArea = col.removeFromTop (headerH);
+            compTab->setBounds (headerArea);
+
+            auto infoRow = headerArea.withHeight (toggleRowH);
+            auto infoArea = infoRow.removeFromRight (colW / 2);
+            fxInfoComp.setBounds (infoArea.reduced (2, 3));
+
+            col.removeFromTop (6);
 
             const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
