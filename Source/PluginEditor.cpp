@@ -1645,8 +1645,8 @@ void PPGWave3Editor::resized()
     const int gap = 6;
     const int availH = r.getHeight() - 2 * gap;
 
-    const int topRowH = (int) (availH * 0.32f);
-    const int seqRowH = (int) (availH * 0.36f);
+    const int topRowH = (int) ((float) availH * 0.32f);
+    const int seqRowH = (int) ((float) availH * 0.36f);
     const int fxRowH  = availH - topRowH - seqRowH;
 
     auto topRow = r.removeFromTop (topRowH);
@@ -1663,12 +1663,11 @@ void PPGWave3Editor::resized()
         const int colGap = 6;
         const int usableW = topRow.getWidth() - 5 * colGap;
 
-        const int osc1W  = (int) (usableW * 0.15f);
-        const int osc2W  = (int) (usableW * 0.15f);
-        const int filtW  = (int) (usableW * 0.14f);
-        const int envW   = (int) (usableW * 0.19f);
-        const int lfoW   = (int) (usableW * 0.18f);
-        const int modW   = usableW - osc1W - osc2W - filtW - envW - lfoW;
+        const int osc1W  = (int) ((float) usableW * 0.15f);
+        const int osc2W  = (int) ((float) usableW * 0.15f);
+        const int filtW  = (int) ((float) usableW * 0.14f);
+        const int envW   = (int) ((float) usableW * 0.19f);
+        const int lfoW   = (int) ((float) usableW * 0.18f);
 
         osc1Area   = topRow.removeFromLeft (osc1W);   topRow.removeFromLeft (colGap);
         osc2Area   = topRow.removeFromLeft (osc2W);   topRow.removeFromLeft (colGap);
@@ -1877,7 +1876,7 @@ void PPGWave3Editor::resized()
         layoutRow (inner,                        *mod4Src, *mod4Dst, mod4Amt);
     }
 
-    // ==================== EFFECTS: 8 columnas con anchos por unidad ====================
+    // ==================== EFFECTS ====================
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
@@ -1913,7 +1912,7 @@ void PPGWave3Editor::resized()
             const int n = (int) knobs.size();
             if (n == 0) return;
 
-            auto* arr = const_cast<juce::Component**> (knobs.begin());
+            juce::Component** arr = const_cast<juce::Component**> (knobs.begin());
             const int h = col.getHeight() / n;
             for (int i = 0; i < n; ++i)
                 arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
@@ -1950,10 +1949,12 @@ void PPGWave3Editor::resized()
             delaySync->setBounds (col.removeFromTop (26));
             col.removeFromTop (6);
 
+            juce::Component* arr[3] = {
+                (juce::Component*) &delayTime,
+                (juce::Component*) &delayFeedback,
+                (juce::Component*) &delayMix
+            };
             const int n = 3;
-            auto* arr[] = { (juce::Component*) &delayTime,
-                            (juce::Component*) &delayFeedback,
-                            (juce::Component*) &delayMix };
             const int h = col.getHeight() / n;
             for (int i = 0; i < n; ++i)
                 arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
@@ -1973,14 +1974,18 @@ void PPGWave3Editor::resized()
             col.removeFromLeft (subGap);
             auto rightSub = col;
 
-            const int n = 3;
-            auto* arrL[] = { (juce::Component*) &vintageAmount,
-                             (juce::Component*) &vintageBits,
-                             (juce::Component*) &vintageSr };
-            auto* arrR[] = { (juce::Component*) &vintageNoise,
-                             (juce::Component*) &vintageDrift,
-                             (juce::Component*) &vintageVar };
+            juce::Component* arrL[3] = {
+                (juce::Component*) &vintageAmount,
+                (juce::Component*) &vintageBits,
+                (juce::Component*) &vintageSr
+            };
+            juce::Component* arrR[3] = {
+                (juce::Component*) &vintageNoise,
+                (juce::Component*) &vintageDrift,
+                (juce::Component*) &vintageVar
+            };
 
+            const int n = 3;
             const int hL = leftSub.getHeight() / n;
             const int hR = rightSub.getHeight() / n;
             for (int i = 0; i < n; ++i)
@@ -1996,7 +2001,8 @@ void PPGWave3Editor::resized()
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (6);
 
-            const int curveH = juce::jlimit (50, 90, (int) (col.getHeight() * 0.28f));
+            const int curveH = juce::jlimit (50, 90,
+                (int) ((float) col.getHeight() * 0.28f));
             eqCurveDisplay.setBounds (col.removeFromTop (curveH).reduced (0, 1));
             col.removeFromTop (6);
 
@@ -2040,11 +2046,13 @@ void PPGWave3Editor::resized()
             col.removeFromLeft (subGap);
             auto rightSub = col;
 
+            juce::Component* arrL[4] = {
+                (juce::Component*) &compThreshold,
+                (juce::Component*) &compRatio,
+                (juce::Component*) &compAttack,
+                (juce::Component*) &compRelease
+            };
             const int nL = 4;
-            auto* arrL[] = { (juce::Component*) &compThreshold,
-                             (juce::Component*) &compRatio,
-                             (juce::Component*) &compAttack,
-                             (juce::Component*) &compRelease };
             const int hL = leftSub.getHeight() / nL;
             for (int i = 0; i < nL; ++i)
                 arrL[i]->setBounds (leftSub.removeFromTop (hL).reduced (1, 2));
@@ -2053,10 +2061,12 @@ void PPGWave3Editor::resized()
             compSidechain->setBounds (scArea.withSizeKeepingCentre (48, 48));
             rightSub.removeFromBottom (6);
 
+            juce::Component* arrR[3] = {
+                (juce::Component*) &compKnee,
+                (juce::Component*) &compMakeup,
+                (juce::Component*) &compScAmount
+            };
             const int nR = 3;
-            auto* arrR[] = { (juce::Component*) &compKnee,
-                             (juce::Component*) &compMakeup,
-                             (juce::Component*) &compScAmount };
             const int hR = rightSub.getHeight() / nR;
             for (int i = 0; i < nR; ++i)
                 arrR[i]->setBounds (rightSub.removeFromTop (hR).reduced (1, 2));
