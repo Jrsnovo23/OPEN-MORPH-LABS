@@ -248,9 +248,14 @@ private:
     PresetDisplay    presetDisplay;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
+    // === InfoDisplays principales ===
     InfoDisplay osc1Info, osc2Info, filterInfo;
     InfoDisplay envInfo, masterInfo;
-    InfoDisplay lfoInfo, modInfo, fxInfo;
+    InfoDisplay lfoInfo, modInfo;
+
+    // === InfoDisplays individuales por columna FX (8) ===
+    InfoDisplay fxInfoDrive, fxInfoChorus, fxInfoPhaser, fxInfoDelay;
+    InfoDisplay fxInfoReverb, fxInfoVintage, fxInfoEq, fxInfoComp;
 
     std::unique_ptr<ButtonSelector> osc1Wave;
     ui::WavetablePreview osc1Preview;
