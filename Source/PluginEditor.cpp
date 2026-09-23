@@ -634,7 +634,7 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
     }
 }
 
-// ==================== Editor ====================
+// ==================== FxTab ====================
 
 PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
                               const juce::String& toggleParamId,
@@ -653,15 +653,10 @@ PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
         apvts, toggleParamId, toggleBtn);
 }
 
-void PPGWave3Editor::FxTab::setSelected (bool s)
-{
-    if (s != selected) { selected = s; repaint(); }
-}
-
 void PPGWave3Editor::FxTab::resized()
 {
     auto r = getLocalBounds();
-    auto indicatorArea = r.removeFromRight (18).reduced (3, 5);
+    auto indicatorArea = r.removeFromRight (20).reduced (3, 4);
     toggleBtn.setBounds (indicatorArea);
 }
 
@@ -669,21 +664,16 @@ void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat();
 
-    g.setColour (selected ? juce::Colour (0xffffaa00) : juce::Colour (0xff1c1c1c));
+    g.setColour (juce::Colour (0xff141414));
     g.fillRoundedRectangle (r, 3.0f);
 
     g.setColour (juce::Colour (0xff2f2f2f));
     g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
 
-    g.setColour (selected ? juce::Colours::black : juce::Colour (0xffaaaaaa));
-    g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+    g.setColour (juce::Colour (0xffe0e0e0));
+    g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
     g.drawText (text, getLocalBounds().reduced (6, 0),
                 juce::Justification::centredLeft, false);
-}
-
-void PPGWave3Editor::FxTab::mouseDown (const juce::MouseEvent&)
-{
-    if (onSelect) onSelect();
 }
 
 // ==================== Constructor del editor ====================
@@ -856,22 +846,13 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     addAndMakeVisible (presetDisplay);
     updatePresetDisplay();
 
-    // === FX tabs (FxTab con indicador ON/OFF) ===
-    driveTab  ->onSelect = [this]() { activeFxTab = 0; updateFxVisibility(); repaint(); };
-    chorusTab ->onSelect = [this]() { activeFxTab = 1; updateFxVisibility(); repaint(); };
-    phaserTab ->onSelect = [this]() { activeFxTab = 2; updateFxVisibility(); repaint(); };
-    delayTab  ->onSelect = [this]() { activeFxTab = 3; updateFxVisibility(); repaint(); };
-    reverbTab ->onSelect = [this]() { activeFxTab = 4; updateFxVisibility(); repaint(); };
-    vintageTab->onSelect = [this]() { activeFxTab = 5; updateFxVisibility(); repaint(); };
-    eqTab     ->onSelect = [this]() { activeFxTab = 6; updateFxVisibility(); repaint(); };
-    compTab   ->onSelect = [this]() { activeFxTab = 7; updateFxVisibility(); repaint(); };
-
+    // FX tabs: sólo cabecera con indicador ON/OFF
     for (auto* t : { driveTab.get(), chorusTab.get(), phaserTab.get(),
                      delayTab.get(), reverbTab.get(), vintageTab.get(),
                      eqTab.get(), compTab.get() })
         addAndMakeVisible (*t);
 
-    // === Env tab buttons ===
+    // Env tab buttons
     for (auto* b : { &env1TabBtn, &env2TabBtn, &env3TabBtn })
     {
         b->setClickingTogglesState (false);
@@ -913,7 +894,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     setActiveEqBand (0);
     addAndMakeVisible (eqCurveDisplay);
 
-    // === Teclado virtual (extendido C1-C8) ===
+    // Teclado virtual
     keyboardComponent.setAvailableRange (24, 108);
     keyboardComponent.setLowestVisibleKey (24);
     keyboardComponent.setScrollButtonsVisible (false);
@@ -933,7 +914,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
                                  juce::Colour (0xff444444));
     addAndMakeVisible (keyboardComponent);
 
-    // === Pitch wheel ===
+    // Pitch wheel
     pitchWheelSlider.setSliderStyle (juce::Slider::LinearVertical);
     pitchWheelSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     pitchWheelSlider.setRange (-1.0, 1.0, 0.001);
@@ -957,7 +938,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     pitchWheelLabel.setFont (juce::FontOptions (9.0f, juce::Font::bold));
     addAndMakeVisible (pitchWheelLabel);
 
-    // === Mod wheel ===
+    // Mod wheel
     modWheelSlider.setSliderStyle (juce::Slider::LinearVertical);
     modWheelSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     modWheelSlider.setRange (0.0, 1.0, 0.001);
@@ -977,7 +958,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     modWheelLabel.setFont (juce::FontOptions (9.0f, juce::Font::bold));
     addAndMakeVisible (modWheelLabel);
 
-    // === Visualizadores ===
+    // Visualizadores
     addAndMakeVisible (osc1Preview);
     addAndMakeVisible (osc2Preview);
     addAndMakeVisible (lfo1Display);
@@ -1037,7 +1018,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
 
     setLookAndFeel (&ppgLnf);
     setResizable (false, false);
-    setSize (1280, 950);
+    setSize (1280, 920);
 
     updateFxVisibility();
     updateEnvVisibility();
@@ -1190,78 +1171,13 @@ void PPGWave3Editor::onToggleFavoritesOnly()
     favoritesOnlyBtn.setToggleState (newState, juce::dontSendNotification);
 }
 
-// ==================== FX Tab visibility ====================
+// ==================== FX Tab visibility (ahora todo siempre visible) ====================
 
 void PPGWave3Editor::updateFxVisibility()
 {
-    // 0=DIST, 1=CHORUS, 2=PHASER, 3=DELAY, 4=REVERB,
-    // 5=VINTAGE, 6=EQ, 7=COMP
-    const bool d  = (activeFxTab == 0);
-    const bool c  = (activeFxTab == 1);
-    const bool ph = (activeFxTab == 2);
-    const bool dl = (activeFxTab == 3);
-    const bool r  = (activeFxTab == 4);
-    const bool vi = (activeFxTab == 5);
-    const bool eq = (activeFxTab == 6);
-    const bool cp = (activeFxTab == 7);
-
-    driveAmount.setVisible (d);
-    driveTone  .setVisible (d);
-    driveMix   .setVisible (d);
-
-    chorusRate .setVisible (c);
-    chorusDepth.setVisible (c);
-    chorusMix  .setVisible (c);
-
-    phaserRate    .setVisible (ph);
-    phaserDepth   .setVisible (ph);
-    phaserFeedback.setVisible (ph);
-    phaserMix     .setVisible (ph);
-
-    delaySync  ->setVisible (dl);
-    delayTime  .setVisible (dl);
-    delayFeedback.setVisible (dl);
-    delayMix   .setVisible (dl);
-
-    reverbSize .setVisible (r);
-    reverbDamp .setVisible (r);
-    reverbMix  .setVisible (r);
-
-    vintageAmount.setVisible (vi);
-    vintageBits  .setVisible (vi);
-    vintageSr    .setVisible (vi);
-    vintageNoise .setVisible (vi);
-    vintageDrift .setVisible (vi);
-    vintageVar   .setVisible (vi);
-
-    eqHpOn ->setVisible (eq);
-    eqLpOn ->setVisible (eq);
-    eqLowBtn .setVisible (eq);
-    eqLmidBtn.setVisible (eq);
-    eqHmidBtn.setVisible (eq);
-    eqHighBtn.setVisible (eq);
-    eqFreqKnob.setVisible (eq);
-    eqQKnob   .setVisible (eq);
-    eqGainKnob.setVisible (eq);
-    eqCurveDisplay.setVisible (eq);
-
-    compSidechain->setVisible (cp);
-    compThreshold.setVisible (cp);
-    compRatio    .setVisible (cp);
-    compAttack   .setVisible (cp);
-    compRelease  .setVisible (cp);
-    compKnee     .setVisible (cp);
-    compMakeup   .setVisible (cp);
-    compScAmount .setVisible (cp);
-
-    driveTab  ->setSelected (d);
-    chorusTab ->setSelected (c);
-    phaserTab ->setSelected (ph);
-    delayTab  ->setSelected (dl);
-    reverbTab ->setSelected (r);
-    vintageTab->setSelected (vi);
-    eqTab     ->setSelected (eq);
-    compTab   ->setSelected (cp);
+    // Ya no hay tabs "activos": todos los efectos están a la vista.
+    // Solo actualizamos el estado visual de las cabeceras según el param ON/OFF.
+    // (El toggle ya lo hace el ButtonAttachment, así que no hacemos nada aquí.)
 }
 
 // ==================== Env Tab visibility ====================
@@ -1406,7 +1322,7 @@ void PPGWave3Editor::onBrowsePreset()
 
 float PPGWave3Editor::computeScale() const
 {
-    const float refH = 950.0f;
+    const float refH = 920.0f;
     return juce::jlimit (0.72f, 1.5f, (float) getHeight() / refH);
 }
 
@@ -1473,7 +1389,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
 {
     g.fillAll (PPGLookAndFeel::bgApp());
 
-    auto top = getLocalBounds().removeFromTop (50);
+    auto top = getLocalBounds().removeFromTop (42);
     {
         juce::ColourGradient grad (juce::Colour (0xff0a0a0a),
                                    0.0f, (float) top.getY(),
@@ -1575,15 +1491,38 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
     auto a = area;
     auto topRow = a.removeFromTop (juce::roundToInt ((float) a.getHeight() * 0.6f));
 
-    const float omlSize = juce::jmax (16.0f, (float) a.getHeight() * 0.55f);
+    const float omlSize = juce::jmax (14.0f, (float) a.getHeight() * 0.55f);
     g.setFont (juce::Font (juce::FontOptions (omlSize, juce::Font::bold)));
     g.setColour (PPGLookAndFeel::accent());
     g.drawText ("OML", topRow, juce::Justification::centredLeft, false);
 
-    const float subSize = juce::jmax (7.0f, (float) a.getHeight() * 0.32f);
+    const float subSize = juce::jmax (6.5f, (float) a.getHeight() * 0.32f);
     g.setFont (juce::Font (juce::FontOptions (subSize, juce::Font::plain)));
     g.setColour (PPGLookAndFeel::textDim());
     g.drawText ("Open Morph Labs", a, juce::Justification::centredLeft, false);
+}
+
+// ==================== Helper: layout de columna de knobs ====================
+
+void PPGWave3Editor::layoutKnobStack (juce::Rectangle<int> col,
+                                      std::initializer_list<juce::Component*> knobs,
+                                      int itemHeight)
+{
+    const int n = (int) knobs.size();
+    if (n == 0) return;
+
+    auto* arr = const_cast<juce::Component**> (knobs.begin());
+
+    int usedH = n * itemHeight;
+    if (usedH > col.getHeight())
+        itemHeight = col.getHeight() / n;
+    usedH = n * itemHeight;
+
+    const int leftover = col.getHeight() - usedH;
+    col.removeFromTop (leftover / 2);
+
+    for (int i = 0; i < n; ++i)
+        arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
 
 // ==================== resized ====================
@@ -1595,40 +1534,37 @@ void PPGWave3Editor::resized()
 
     auto r = getLocalBounds();
 
-    // ===== Header (50px) =====
-    auto header = r.removeFromTop (50);
+    // ===== Header (42px) =====
+    auto header = r.removeFromTop (42);
     {
-        auto h = header.reduced (8, 5);
+        auto h = header.reduced (8, 4);
 
-        // --- Zona derecha: MASTER + 2 VU meters ---
-        auto masterZone = h.removeFromRight (170);
-        h.removeFromRight (8);
+        auto masterZone = h.removeFromRight (150);
+        h.removeFromRight (6);
 
-        // --- Zona izquierda: logo OML ---
-        auto logoZone = h.removeFromLeft (110);
+        auto logoZone = h.removeFromLeft (100);
         headerLogoArea = logoZone;
         h.removeFromLeft (6);
 
-        // --- Zona central: preset bar ---
         auto presetZone = h;
 
-        // --- Master zone ---
+        // Master zone
         const int innerH = masterZone.getHeight();
-        auto knobArea = masterZone.removeFromLeft (44);
-        master.setBounds (knobArea.withSizeKeepingCentre (40, juce::jmin (innerH, 40)));
-        masterZone.removeFromLeft (6);
+        auto knobArea = masterZone.removeFromLeft (38);
+        master.setBounds (knobArea.withSizeKeepingCentre (36, juce::jmin (innerH, 36)));
+        masterZone.removeFromLeft (5);
 
         const int meterH = (innerH - 3) / 2;
         compGrMeter.setBounds (masterZone.removeFromTop (meterH));
         masterZone.removeFromTop (3);
         masterHztMeter.setBounds (masterZone);
 
-        // --- Preset bar ---
-        const int navW   = 26;
-        const int smallW = 66;
-        const int medW   = 78;
-        const int starW  = 28;
-        const int favW   = 42;
+        // Preset bar
+        const int navW   = 24;
+        const int smallW = 62;
+        const int medW   = 74;
+        const int starW  = 26;
+        const int favW   = 40;
 
         prevBtn.setBounds (presetZone.removeFromLeft (navW));
         nextBtn.setBounds (presetZone.removeFromLeft (navW));
@@ -1654,7 +1590,7 @@ void PPGWave3Editor::resized()
 
     keyboardStrip.reduce (10, 8);
 
-    const int wheelW = juce::jmax (30, juce::roundToInt (44.0f * currentScale));
+    const int wheelW = juce::jmax (28, juce::roundToInt (42.0f * currentScale));
     const int labelH = juce::jmax (10, juce::roundToInt (12.0f * currentScale));
 
     auto pitchArea = keyboardStrip.removeFromLeft (wheelW);
@@ -1670,19 +1606,18 @@ void PPGWave3Editor::resized()
     keyboardStrip.removeFromLeft (12);
     keyboardComponent.setBounds (keyboardStrip);
 
-    // Auto-fit keyWidth para llenar el ancho (C1–C8 = 50 teclas blancas).
     {
         const float kw = (float) keyboardStrip.getWidth() / 50.0f;
         keyboardComponent.setKeyWidth (juce::jmax (12.0f, kw));
     }
 
-    // ===== Área de contenido (3 filas: top / seq / fx) =====
+    // ===== Área de contenido: top / seq / fx =====
     r.reduce (6, 6);
 
     const int gap = 6;
     const int availH = r.getHeight() - 2 * gap;
 
-    const int topRowH = (int) (availH * 0.46f);
+    const int topRowH = (int) (availH * 0.42f);
     const int seqRowH = (int) (availH * 0.16f);
     const int fxRowH  = availH - topRowH - seqRowH;
 
@@ -1731,7 +1666,7 @@ void PPGWave3Editor::resized()
         innerOut.removeFromTop (1);
     };
 
-    // -------- Osciladores --------
+    // -------- Osciladores (compactos) --------
     auto layoutOscSection = [&] (juce::Rectangle<int> area,
                                  InfoDisplay& info, ButtonSelector& waveSel,
                                  ui::WavetablePreview& preview,
@@ -1741,25 +1676,26 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (area, info, inner);
 
-        waveSel.setBounds (inner.removeFromTop (22).reduced (0, 1));
+        waveSel.setBounds (inner.removeFromTop (20).reduced (0, 1));
         inner.removeFromTop (3);
 
-        const int previewH = juce::jmin (55, inner.getHeight() / 3);
+        const int previewH = juce::jmin (40, inner.getHeight() / 3);
         preview.setBounds (inner.removeFromTop (previewH).reduced (1, 0));
-        inner.removeFromTop (5);
+        inner.removeFromTop (4);
 
+        // 5 knobs: fila 1 (POS/OCT/SEMI), fila 2 (FINE/LEVEL)
         const int knobRowH = inner.getHeight() / 2;
         auto topKnobRow = inner.removeFromTop (knobRowH);
         auto botKnobRow = inner;
 
         const int kw3 = topKnobRow.getWidth() / 3;
-        kPos .setBounds (topKnobRow.removeFromLeft (kw3));
-        kOct .setBounds (topKnobRow.removeFromLeft (kw3));
-        kSemi.setBounds (topKnobRow);
+        kPos .setBounds (topKnobRow.removeFromLeft (kw3).reduced (1, 0));
+        kOct .setBounds (topKnobRow.removeFromLeft (kw3).reduced (1, 0));
+        kSemi.setBounds (topKnobRow.reduced (1, 0));
 
         const int kw2 = botKnobRow.getWidth() / 2;
-        kFine .setBounds (botKnobRow.removeFromLeft (kw2));
-        kLevel.setBounds (botKnobRow);
+        kFine .setBounds (botKnobRow.removeFromLeft (kw2).reduced (1, 0));
+        kLevel.setBounds (botKnobRow.reduced (1, 0));
     };
 
     layoutOscSection (osc1Area, osc1Info, *osc1Wave, osc1Preview,
@@ -1767,46 +1703,46 @@ void PPGWave3Editor::resized()
     layoutOscSection (osc2Area, osc2Info, *osc2Wave, osc2Preview,
                       osc2Pos, osc2Oct, osc2Semi, osc2Fine, osc2Level);
 
-    // -------- Filtro --------
+    // -------- Filtro (compacto) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (filterArea, filterInfo, inner);
 
-        filterType->setBounds (inner.removeFromTop (22).reduced (0, 1));
-        inner.removeFromTop (5);
+        filterType->setBounds (inner.removeFromTop (20).reduced (0, 1));
+        inner.removeFromTop (4);
 
         const int knobRowH = inner.getHeight() / 2;
         auto topKnobRow = inner.removeFromTop (knobRowH);
         auto botKnobRow = inner;
 
         const int kw2 = topKnobRow.getWidth() / 2;
-        filterCutoff.setBounds (topKnobRow.removeFromLeft (kw2));
-        filterReso  .setBounds (topKnobRow);
-        filterEnvAmt.setBounds (botKnobRow.removeFromLeft (kw2));
-        filterKeyTrack.setBounds (botKnobRow);
+        filterCutoff.setBounds (topKnobRow.removeFromLeft (kw2).reduced (1, 0));
+        filterReso  .setBounds (topKnobRow.reduced (1, 0));
+        filterEnvAmt.setBounds (botKnobRow.removeFromLeft (kw2).reduced (1, 0));
+        filterKeyTrack.setBounds (botKnobRow.reduced (1, 0));
     }
 
-    // -------- Envelopes (display grande, knobs al pie) --------
+    // -------- Envelopes (display más contenido) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (envArea, envInfo, inner);
 
-        auto tabRow = inner.removeFromTop (22);
+        auto tabRow = inner.removeFromTop (20);
         const int tabW = tabRow.getWidth() / 3;
         env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
         env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
         env3TabBtn.setBounds (tabRow.reduced (1, 0));
-        inner.removeFromTop (4);
+        inner.removeFromTop (3);
 
-        // Knobs at bottom: 4 filas en una sola
-        const int knobRowH = juce::jmin (72, inner.getHeight() / 3);
+        // Knobs at bottom
+        const int knobRowH = juce::jmin (60, inner.getHeight() / 2);
         auto knobRow = inner.removeFromBottom (knobRowH);
 
         const int kw = knobRow.getWidth() / 4;
-        env1A.setBounds (knobRow.removeFromLeft (kw));
-        env1D.setBounds (knobRow.removeFromLeft (kw));
-        env1S.setBounds (knobRow.removeFromLeft (kw));
-        env1R.setBounds (knobRow);
+        env1A.setBounds (knobRow.removeFromLeft (kw).reduced (1, 0));
+        env1D.setBounds (knobRow.removeFromLeft (kw).reduced (1, 0));
+        env1S.setBounds (knobRow.removeFromLeft (kw).reduced (1, 0));
+        env1R.setBounds (knobRow.reduced (1, 0));
         env2A.setBounds (env1A.getBounds());
         env2D.setBounds (env1D.getBounds());
         env2S.setBounds (env1S.getBounds());
@@ -1816,7 +1752,7 @@ void PPGWave3Editor::resized()
         env3S.setBounds (env1S.getBounds());
         env3R.setBounds (env1R.getBounds());
 
-        // Display fills the middle
+        // Display fills the rest
         inner.removeFromBottom (4);
         auto dispRow = inner;
         env1Display.setBounds (dispRow);
@@ -1824,7 +1760,7 @@ void PPGWave3Editor::resized()
         env3Display.setBounds (dispRow);
     }
 
-    // -------- LFO --------
+    // -------- LFO (compacto) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (lfoArea, lfoInfo, inner);
@@ -1839,20 +1775,20 @@ void PPGWave3Editor::resized()
                               ui::LFODisplay& display,
                               RotaryKnob& rate, RotaryKnob& depth, RotaryKnob& phase)
         {
-            auto comboRow = area.removeFromTop (22);
+            auto comboRow = area.removeFromTop (20);
             const int comboW = comboRow.getWidth() / 2;
             w   .setBounds (comboRow.removeFromLeft (comboW).reduced (1, 0));
             sync.setBounds (comboRow.reduced (1, 0));
-            area.removeFromTop (3);
+            area.removeFromTop (2);
 
-            const int dispH = juce::jmin (36, area.getHeight() / 2);
+            const int dispH = juce::jmin (28, area.getHeight() / 2);
             display.setBounds (area.removeFromTop (dispH).reduced (1, 0));
-            area.removeFromTop (3);
+            area.removeFromTop (2);
 
             const int kw = area.getWidth() / 3;
-            rate .setBounds (area.removeFromLeft (kw));
-            depth.setBounds (area.removeFromLeft (kw));
-            phase.setBounds (area);
+            rate .setBounds (area.removeFromLeft (kw).reduced (1, 0));
+            depth.setBounds (area.removeFromLeft (kw).reduced (1, 0));
+            phase.setBounds (area.reduced (1, 0));
         };
 
         layoutLFO (lfo1Zone, *lfo1Wave, *lfo1Sync, lfo1Display,
@@ -1861,7 +1797,7 @@ void PPGWave3Editor::resized()
                    lfo2Rate, lfo2Depth, lfo2Phase);
     }
 
-    // -------- Mod Matrix --------
+    // -------- Mod Matrix (compacto) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
@@ -1884,145 +1820,169 @@ void PPGWave3Editor::resized()
         layoutRow (inner,                        *mod4Src, *mod4Dst, mod4Amt);
     }
 
-    // -------- Effects (con FxTab + knobs pequeños) --------
+    // -------- Effects: 8 columnas, TODO siempre visible --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (fxArea, fxInfo, inner);
 
-        // Fila de tabs (28px, con indicador ON/OFF integrado)
-        auto tabRow = inner.removeFromTop (26);
-        const int tabW = tabRow.getWidth() / 8;
-        driveTab  ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        chorusTab ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        phaserTab ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        delayTab  ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        reverbTab ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        vintageTab->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        eqTab     ->setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        compTab   ->setBounds (tabRow.reduced (1, 0));
+        inner.removeFromTop (2);
 
-        inner.removeFromTop (6);
+        // Anchos: EQ ocupa doble (por su cantidad de controles)
+        const int colGap = 4;
+        const int numCols = 8;
+        const int usableW = inner.getWidth() - (numCols - 1) * colGap;
 
-        // Cap altura de los knobs para que no se hinchen.
-        const int maxKnobH = 80;
-        auto cappedInner = inner.reduced (24, 4);
-        if (cappedInner.getHeight() > maxKnobH)
-            cappedInner = cappedInner.removeFromTop (maxKnobH);
+        // Reservamos 2 "unidades" para el EQ y 1 para cada uno de los otros 7.
+        const int totalUnits = numCols + 1; // 9
+        const int unitW = usableW / totalUnits;
 
-        const auto controlsArea = cappedInner;
+        const int stdW = unitW;
+        const int eqW  = 2 * unitW;
+        const int colH = inner.getHeight();
 
-        auto layoutFullRow = [] (juce::Rectangle<int> area,
-                                 RotaryKnob& k1, RotaryKnob& k2, RotaryKnob& k3)
+        // Cabecera estándar por columna
+        auto placeStdCol = [&] (FxTab& tab,
+                                std::initializer_list<juce::Component*> knobs,
+                                int knobItemHeight)
         {
-            const int kw = area.getWidth() / 3;
-            k1.setBounds (area.removeFromLeft (kw).reduced (4, 0));
-            k2.setBounds (area.removeFromLeft (kw).reduced (4, 0));
-            k3.setBounds (area.reduced (4, 0));
+            auto col = inner.removeFromLeft (stdW);
+            inner.removeFromLeft (colGap);
+
+            tab.setBounds (col.removeFromTop (22).reduced (0, 1));
+            col.removeFromTop (4);
+
+            layoutKnobStack (col, knobs, knobItemHeight);
         };
 
-        { auto area = controlsArea; layoutFullRow (area, driveAmount, driveTone, driveMix); }
-        { auto area = controlsArea; layoutFullRow (area, chorusRate, chorusDepth, chorusMix); }
-        { auto area = controlsArea; layoutFullRow (area, reverbSize, reverbDamp, reverbMix); }
+        // Altura típica del "ítem" (label + knob). Usamos un valor
+        // que se ajusta al alto disponible.
+        const int knobItemH = juce::jmax (40, juce::jmin (58, colH / 6));
 
-        // Phaser (4 knobs)
+        placeStdCol (*driveTab,
+                     { &driveAmount, &driveTone, &driveMix },
+                     knobItemH);
+
+        placeStdCol (*chorusTab,
+                     { &chorusRate, &chorusDepth, &chorusMix },
+                     knobItemH);
+
+        placeStdCol (*phaserTab,
+                     { &phaserRate, &phaserDepth, &phaserFeedback, &phaserMix },
+                     knobItemH);
+
+        // Delay: cabecera + sync combo + 3 knobs
         {
-            auto area = controlsArea;
-            const int kw = area.getWidth() / 4;
-            phaserRate    .setBounds (area.removeFromLeft (kw).reduced (4, 0));
-            phaserDepth   .setBounds (area.removeFromLeft (kw).reduced (4, 0));
-            phaserFeedback.setBounds (area.removeFromLeft (kw).reduced (4, 0));
-            phaserMix     .setBounds (area.reduced (4, 0));
+            auto col = inner.removeFromLeft (stdW);
+            inner.removeFromLeft (colGap);
+
+            delayTab->setBounds (col.removeFromTop (22).reduced (0, 1));
+            col.removeFromTop (3);
+
+            delaySync->setBounds (col.removeFromTop (26).reduced (0, 0));
+            col.removeFromTop (3);
+
+            layoutKnobStack (col,
+                             { &delayTime, &delayFeedback, &delayMix },
+                             knobItemH);
         }
 
-        // Delay (sync + 3 knobs)
+        placeStdCol (*reverbTab,
+                     { &reverbSize, &reverbDamp, &reverbMix },
+                     knobItemH);
+
+        // Vintage: 6 knobs → 2 columnas internas de 3
         {
-            auto area = controlsArea;
-            auto syncArea = area.removeFromLeft (140);
-            delaySync->setBounds (syncArea.withSizeKeepingCentre (
-                syncArea.getWidth() - 12, juce::jmin (52, syncArea.getHeight() - 6)));
-            area.removeFromLeft (16);
-            const int kw = area.getWidth() / 3;
-            delayTime    .setBounds (area.removeFromLeft (kw).reduced (6, 0));
-            delayFeedback.setBounds (area.removeFromLeft (kw).reduced (6, 0));
-            delayMix     .setBounds (area.reduced (6, 0));
+            auto col = inner.removeFromLeft (stdW);
+            inner.removeFromLeft (colGap);
+
+            vintageTab->setBounds (col.removeFromTop (22).reduced (0, 1));
+            col.removeFromTop (4);
+
+            const int subGap = 2;
+            const int subW = (col.getWidth() - subGap) / 2;
+
+            auto leftSub  = col.removeFromLeft (subW);
+            col.removeFromLeft (subGap);
+            auto rightSub = col;
+
+            layoutKnobStack (leftSub,
+                             { &vintageAmount, &vintageBits, &vintageSr },
+                             knobItemH);
+            layoutKnobStack (rightSub,
+                             { &vintageNoise, &vintageDrift, &vintageVar },
+                             knobItemH);
         }
 
-        // Vintage (2 filas de 3 knobs)
+        // EQ: 2 unidades de ancho
         {
-            auto area = controlsArea;
-            const int rowGap = 6;
-            const int rowH = (area.getHeight() - rowGap) / 2;
-            auto topKnobRow = area.removeFromTop (rowH);
-            area.removeFromTop (rowGap);
-            auto botKnobRow = area;
+            auto col = inner.removeFromLeft (eqW);
+            inner.removeFromLeft (colGap);
 
-            const int kwTop = topKnobRow.getWidth() / 3;
-            vintageAmount.setBounds (topKnobRow.removeFromLeft (kwTop).reduced (6, 0));
-            vintageBits  .setBounds (topKnobRow.removeFromLeft (kwTop).reduced (6, 0));
-            vintageSr    .setBounds (topKnobRow.reduced (6, 0));
+            eqTab->setBounds (col.removeFromTop (22).reduced (0, 1));
+            col.removeFromTop (3);
 
-            const int kwBot = botKnobRow.getWidth() / 3;
-            vintageNoise .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (6, 0));
-            vintageDrift .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (6, 0));
-            vintageVar   .setBounds (botKnobRow.reduced (6, 0));
+            // Fila 1: HP / LP toggles
+            auto hpLpRow = col.removeFromTop (20);
+            const int hpW = 40;
+            eqHpOn->setBounds (hpLpRow.removeFromLeft (hpW).reduced (1, 0));
+            hpLpRow.removeFromLeft (4);
+            eqLpOn->setBounds (hpLpRow.removeFromLeft (hpW).reduced (1, 0));
+
+            col.removeFromTop (3);
+
+            // Fila 2: 4 botones de banda
+            auto bandRow = col.removeFromTop (20);
+            const int bandW = bandRow.getWidth() / 4;
+            eqLowBtn .setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
+            eqLmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
+            eqHmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
+            eqHighBtn.setBounds (bandRow.reduced (1, 0));
+
+            col.removeFromTop (4);
+
+            // Fila 3: 3 knobs (FREQ/Q/GAIN) + curva pequeña al lado
+            const int knobRowH = juce::jmin (colH - 22 - 20 - 3 - 20 - 4 - 6, 70);
+            auto knobRow = col.removeFromTop (knobRowH);
+
+            const int curveW = (int) ((float) knobRow.getWidth() * 0.35f);
+            auto curveArea = knobRow.removeFromRight (curveW);
+            eqCurveDisplay.setBounds (curveArea.reduced (2, 0));
+
+            knobRow.removeFromRight (4);
+            const int kw = knobRow.getWidth() / 3;
+            eqFreqKnob.setBounds (knobRow.removeFromLeft (kw).reduced (2, 0));
+            eqQKnob   .setBounds (knobRow.removeFromLeft (kw).reduced (2, 0));
+            eqGainKnob.setBounds (knobRow.reduced (2, 0));
         }
 
-        // EQ
+        // COMP: 7 knobs + 1 toggle SC → 2 columnas internas
         {
-            auto area = controlsArea;
-            const int topRowH = 24;
-            auto topRow = area.removeFromTop (topRowH);
-            area.removeFromTop (4);
+            auto col = inner;
 
-            const int eqOnW = 60;
-            topRow.removeFromLeft (eqOnW);
-            topRow.removeFromLeft (8);
+            compTab->setBounds (col.removeFromTop (22).reduced (0, 1));
+            col.removeFromTop (4);
 
-            const int bandW = (int) ((float) topRow.getWidth() * 0.55f / 4.0f);
-            eqLowBtn .setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
-            eqLmidBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
-            eqHmidBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
-            eqHighBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
-            topRow.removeFromLeft (8);
+            const int subGap = 2;
+            const int subW = (col.getWidth() - subGap) / 2;
 
-            const int hpLpW = juce::jmin (60, topRow.getWidth() / 2);
-            eqHpOn->setBounds (topRow.removeFromLeft (hpLpW).reduced (2, 2));
-            eqLpOn->setBounds (topRow.removeFromLeft (hpLpW).reduced (2, 2));
+            auto leftSub  = col.removeFromLeft (subW);
+            col.removeFromLeft (subGap);
+            auto rightSub = col;
 
-            auto bottomRow = area;
-            const int knobZoneW = (int) ((float) bottomRow.getWidth() * 0.40f);
-            auto knobZone = bottomRow.removeFromRight (knobZoneW);
-            bottomRow.removeFromRight (6);
-            auto curveZone = bottomRow;
+            // Izquierda: THRSH, RATIO, ATTACK, RELEASE
+            layoutKnobStack (leftSub,
+                             { &compThreshold, &compRatio, &compAttack, &compRelease },
+                             knobItemH);
 
-            eqCurveDisplay.setBounds (curveZone.reduced (2, 0));
-
-            const int kw = knobZone.getWidth() / 3;
-            eqFreqKnob.setBounds (knobZone.removeFromLeft (kw).reduced (4, 0));
-            eqQKnob   .setBounds (knobZone.removeFromLeft (kw).reduced (4, 0));
-            eqGainKnob.setBounds (knobZone.reduced (4, 0));
-        }
-
-        // Compressor
-        {
-            auto area = controlsArea;
-            const int rowGap = 6;
-            const int rowH = (area.getHeight() - rowGap) / 2;
-            auto topKnobRow = area.removeFromTop (rowH);
-            area.removeFromTop (rowGap);
-            auto botKnobRow = area;
-
-            const int kwTop = topKnobRow.getWidth() / 4;
-            compThreshold.setBounds (topKnobRow.removeFromLeft (kwTop).reduced (4, 0));
-            compRatio    .setBounds (topKnobRow.removeFromLeft (kwTop).reduced (4, 0));
-            compAttack   .setBounds (topKnobRow.removeFromLeft (kwTop).reduced (4, 0));
-            compRelease  .setBounds (topKnobRow.reduced (4, 0));
-
-            const int kwBot = botKnobRow.getWidth() / 4;
-            compKnee     .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (4, 0));
-            compMakeup   .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (4, 0));
-            compScAmount .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (4, 0));
-            compSidechain->setBounds (botKnobRow.reduced (4, 4));
+            // Derecha: KNEE, MAKEUP, SC AMT, SC toggle
+            // Para mezclar knobs y un toggle, hacemos el layout a mano.
+            const int itemH = knobItemH;
+            compKnee  .setBounds (rightSub.removeFromTop (itemH).reduced (2, 0));
+            compMakeup.setBounds (rightSub.removeFromTop (itemH).reduced (2, 0));
+            compScAmount.setBounds (rightSub.removeFromTop (itemH).reduced (2, 0));
+            rightSub.removeFromTop (2);
+            compSidechain->setBounds (rightSub.removeFromTop (
+                juce::jmax (18, rightSub.getHeight())).reduced (2, 0));
         }
     }
 
