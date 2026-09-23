@@ -245,8 +245,9 @@ private:
     juce::TextButton env1TabBtn, env2TabBtn, env3TabBtn;
     int activeEnvTab = 0;
 
+    // === FASE 7.1a: MASTER + 2 VU meters en el header ===
     RotaryKnob master;
-    ui::LevelMeter masterMeter;
+    ui::HorizontalMeter masterHztMeter, compGrMeter;
 
     std::unique_ptr<ComboBoxSelector> lfo1Wave;
     ui::LFODisplay lfo1Display;
@@ -263,9 +264,7 @@ private:
     std::unique_ptr<ComboBoxSelector> mod3Src, mod3Dst;  HSlider mod3Amt;
     std::unique_ptr<ComboBoxSelector> mod4Src, mod4Dst;  HSlider mod4Amt;
 
-    // ===== FX — 8 tabs (FASE 11 añade COMP) =====
-    // Orden visual: DIST | CHORUS | PHASER | DELAY | REVERB | VINTAGE | EQ | COMP
-    // Índices:      0       1        2        3       4        5         6    7
+    // FX — 8 tabs
     juce::TextButton driveTabBtn, chorusTabBtn, phaserTabBtn;
     juce::TextButton delayTabBtn, reverbTabBtn, vintageTabBtn, eqTabBtn, compTabBtn;
     int activeFxTab = 0;
@@ -301,7 +300,7 @@ private:
     std::unique_ptr<ToggleButton> phaserOn;
     RotaryKnob phaserRate, phaserDepth, phaserFeedback, phaserMix;
 
-    // FX — Compressor (FASE 11)
+    // FX — Compressor
     std::unique_ptr<ToggleButton> compOn;
     std::unique_ptr<ToggleButton> compSidechain;
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
@@ -314,7 +313,7 @@ private:
 
     juce::Rectangle<int> osc1Area, osc2Area, filterArea;
     juce::Rectangle<int> lfoArea, modArea, fxArea;
-    juce::Rectangle<int> envArea, masterArea;
+    juce::Rectangle<int> envArea;
     juce::Rectangle<int> keyboardArea, wheelsArea;
     juce::Rectangle<int> presetBarArea;
 
