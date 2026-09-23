@@ -42,7 +42,6 @@ namespace ui
             changed = true;
         }
 
-        // Comparación con tolerancia para evitar repaint innecesario
         if (std::abs (p - cachedPos) > 0.001f)
         {
             cachedPos = p;
@@ -55,7 +54,6 @@ namespace ui
 
     void WavetablePreview::paint (juce::Graphics& g)
     {
-        // Asegurar que el primer render tiene valores
         if (cachedWave < 0)
             refreshIfNeeded();
 
@@ -270,7 +268,7 @@ namespace ui
     }
 
     // ============================================================
-    // LevelMeter
+    // LevelMeter (vertical)
     // ============================================================
     LevelMeter::LevelMeter (std::atomic<float>& levelSource) : level (levelSource)
     {
@@ -315,5 +313,85 @@ namespace ui
         for (float p : marks)
             g.drawVerticalLine ((int) (r.getX() + r.getWidth() * p),
                                 r.getY() + 2.0f, r.getBottom() - 2.0f);
+    }
+
+    // ============================================================
+    // HorizontalMeter (FASE 7.1a)
+    // ============================================================
+    HorizontalMeter::HorizontalMeter (std::atomic<float>& levelSource,
+                                      const juce::String& labelText,
+                                      bool gainReductionMode)
+        : level (levelSource), label (labelText), grMode (gainReductionMode)
+    {
+        startTimerHz (30);
+    }
+
+    void HorizontalMeter::timerCallback()
+    {
+        const float current = level.load();
+        if (current > smoothed) smoothed = current;
+        else                    smoothed = smoothed * 0.85f + current * 0.15f;
+        repaint();
+    }
+
+    void HorizontalMeter::paint (juce::Graphics& g)
+    {
+        auto r = getLocalBounds().toFloat();
+
+        // Fondo
+        g.setColour (juce::Colour (0xff0a0a0a));
+        g.fillRoundedRectangle (r, 2.0f);
+        g.setColour (juce::Colour (0xff2f2f2f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 2.0f, 1.0f);
+
+        auto bar = r.reduced (2.0f);
+
+        // Label a la izquierda (si hay)
+        if (label.isNotEmpty())
+        {
+            const int labelW = 24;
+            auto labelArea = bar.removeFromLeft ((float) labelW);
+
+            g.setColour (juce::Colour (0xff888888));
+            g.setFont (juce::FontOptions (juce::jmax (7.0f, bar.getHeight() * 0.7f),
+                                          juce::Font::bold));
+            g.drawText (label, labelArea, juce::Justification::centred);
+
+            bar.removeFromLeft (2.0f);
+        }
+
+        const float v = juce::jlimit (0.0f, 1.0f, smoothed);
+
+        if (v > 0.001f)
+        {
+            const float filled = bar.getWidth() * v;
+
+            juce::Colour c;
+            if (grMode)
+            {
+                // GR: cuanto más reduce, más rojo. Verde -> amarillo -> rojo.
+                if (v < 0.5f)      c = juce::Colour (0xff2ecc40);
+                else if (v < 0.8f) c = juce::Colour (0xffffaa00);
+                else               c = juce::Colour (0xffff3b30);
+            }
+            else
+            {
+                // Nivel: verde -> amarillo -> rojo (como el vertical)
+                if (v < 0.7f)      c = juce::Colour (0xff2ecc40);
+                else if (v < 0.9f) c = juce::Colour (0xffffaa00);
+                else               c = juce::Colour (0xffff3b30);
+            }
+
+            g.setColour (c);
+            g.fillRoundedRectangle (bar.getX(), bar.getY(),
+                                    filled, bar.getHeight(), 2.0f);
+        }
+
+        // Marcas internas
+        g.setColour (juce::Colour (0xff2f2f2f));
+        const float marks[] = { 0.25f, 0.5f, 0.75f };
+        for (float p : marks)
+            g.drawVerticalLine ((int) (bar.getX() + bar.getWidth() * p),
+                                bar.getY() + 1.0f, bar.getBottom() - 1.0f);
     }
 }
