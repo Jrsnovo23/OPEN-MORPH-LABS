@@ -1411,6 +1411,20 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
+    // Título "EFFECTS" (sin caja, sólo texto + línea sutil)
+    if (! fxArea.isEmpty())
+    {
+        g.setColour (PPGLookAndFeel::accent());
+        g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale,
+                                                  juce::Font::bold)));
+        g.drawText ("EFFECTS",
+                    fxArea.getX() + 8, fxArea.getY() + 3, 200, 12,
+                    juce::Justification::centredLeft);
+
+        g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
+        g.fillRect (fxArea.getX() + 8, fxArea.getY() + 16, 200, 1);
+    }
+
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
@@ -1433,6 +1447,24 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.drawText ("RESERVED FOR STEP SEQUENCER  -  future phase",
                     seqReservedArea, juce::Justification::centred);
     }
+
+    // Cajas de cada columna FX
+    for (int i = 0; i < 8; ++i)
+        drawBox (g, fxColumnAreas[i]);
+
+    // Keyboard strip (fondo) SIN título para no chocar con PITCH/MOD
+    if (! keyboardArea.isEmpty())
+    {
+        const auto r = keyboardArea.toFloat();
+        juce::ColourGradient grad (juce::Colour (0xff1c1c1c), r.getX(), r.getY(),
+                                   juce::Colour (0xff151515), r.getX(), r.getBottom(), false);
+        g.setGradientFill (grad);
+        g.fillRoundedRectangle (r, 4.0f);
+
+        g.setColour (juce::Colour (0xff2f2f2f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
+    }
+}
 
     // === Bloque FX: cada columna con su caja ===
     for (int i = 0; i < 8; ++i)
@@ -1571,7 +1603,7 @@ void PPGWave3Editor::resized()
 
     auto r = getLocalBounds();
 
-    // ===== Header (42px) =====
+    // ===== Header =====
     auto header = r.removeFromTop (42);
     {
         auto h = header.reduced (8, 4);
@@ -1619,7 +1651,7 @@ void PPGWave3Editor::resized()
         presetDisplay.setBounds (presetZone);
     }
 
-    // ===== Tira inferior: teclado + ruedas =====
+    // ===== Keyboard strip =====
     auto keyboardStrip = r.removeFromBottom (92);
     keyboardArea = keyboardStrip;
 
@@ -1646,7 +1678,7 @@ void PPGWave3Editor::resized()
         keyboardComponent.setKeyWidth (juce::jmax (12.0f, kw));
     }
 
-    // ===== Área de contenido =====
+    // ===== Contenido =====
     r.reduce (6, 6);
 
     const int gap = 6;
@@ -1665,7 +1697,7 @@ void PPGWave3Editor::resized()
     seqReservedArea = seqRow;
     fxArea = fxRow;
 
-    // ===== Fila superior: 6 columnas =====
+    // Fila superior: 6 columnas
     {
         const int colGap = 6;
         const int usableW = topRow.getWidth() - 5 * colGap;
@@ -1782,7 +1814,6 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (envArea, envInfo, inner);
 
-        // Tabs de misma altura que los wave selectors de OSC (20px con reduce y 1)
         auto tabRow = inner.removeFromTop (20);
         const int tabW = tabRow.getWidth() / 3;
         env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 1));
@@ -1861,7 +1892,7 @@ void PPGWave3Editor::resized()
                    lfo2Rate, lfo2Depth, lfo2Phase);
     }
 
-    // -------- MOD MATRIX (4 filas iguales) --------
+    // -------- MOD MATRIX --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
@@ -1878,7 +1909,6 @@ void PPGWave3Editor::resized()
             amt.setBounds (row.reduced (1, 3));
         };
 
-        // Las 4 filas usan removeFromTop(rowH) para que tengan la misma altura
         layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
         layoutRow (inner.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
         layoutRow (inner.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
@@ -1889,9 +1919,10 @@ void PPGWave3Editor::resized()
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
-        // Fila superior: InfoDisplay a la derecha (para que se vean los valores)
-        auto infoRow = inner.removeFromTop (18);
-        fxInfo.setBounds (infoRow.removeFromRight (200).reduced (0, 1));
+        // Fila superior: sólo el InfoDisplay, alineado a la derecha
+        // (el texto "EFFECTS" se dibuja en paint() a la izquierda de esta fila)
+        auto titleRow = inner.removeFromTop (16);
+        fxInfo.setBounds (titleRow.removeFromRight (180).reduced (0, 0));
         inner.removeFromTop (4);
 
         const int colGap = 4;
@@ -2009,19 +2040,14 @@ void PPGWave3Editor::resized()
             }
         }
 
-        // EQ (la curva ocupa todo el espacio libre entre la cabecera y la fila final)
+        // EQ: curva ocupa todo el espacio libre
         {
             auto col = fxColumnAreas[6].reduced (6, 6);
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (6);
 
-            // Reservamos:
-            //   bandRow:  20 px para los botones LOW/LMID/HMID/HIGH
-            //   gap1:      6 px
-            //   gap2:      8 px
-            //   finalRow: 62 px para [HP][FREQ][Q][GAIN][LP]
             const int bandRowH  = 20;
-            const int finalRowH = 62;
+            const int finalRowH = 20;    // HP/knobs/LP bajan a 20px
             const int gap1      = 6;
             const int gap2      = 8;
 
@@ -2044,17 +2070,22 @@ void PPGWave3Editor::resized()
             const int elemGap = 4;
             const int elemW = (totalW - 4 * elemGap) / 5;
 
+            // HP: ahora 20px de alto como LOW/LMID/HMID/HIGH
             eqHpOn->setBounds (col.removeFromLeft (elemW)
-                                  .withSizeKeepingCentre (elemW - 4, 48));
+                                  .withSizeKeepingCentre (elemW - 4, 20));
+
             col.removeFromLeft (elemGap);
             eqFreqKnob.setBounds (col.removeFromLeft (elemW));
+
             col.removeFromLeft (elemGap);
             eqQKnob.setBounds (col.removeFromLeft (elemW));
+
             col.removeFromLeft (elemGap);
             eqGainKnob.setBounds (col.removeFromLeft (elemW));
+
             col.removeFromLeft (elemGap);
             eqLpOn->setBounds (col.removeFromLeft (elemW)
-                                  .withSizeKeepingCentre (elemW - 4, 48));
+                                  .withSizeKeepingCentre (elemW - 4, 20));
         }
 
         // COMP
@@ -2080,9 +2111,10 @@ void PPGWave3Editor::resized()
             for (int i = 0; i < nL; ++i)
                 arrL[i]->setBounds (leftSub.removeFromTop (hL).reduced (1, 2));
 
-            auto scArea = rightSub.removeFromBottom (48);
-            compSidechain->setBounds (scArea.withSizeKeepingCentre (48, 48));
-            rightSub.removeFromBottom (6);
+            // SC baja a 20px de alto, manteniendo 48 de ancho
+            auto scArea = rightSub.removeFromBottom (24);
+            compSidechain->setBounds (scArea.withSizeKeepingCentre (48, 20));
+            rightSub.removeFromBottom (4);
 
             juce::Component* arrR[3] = {
                 (juce::Component*) &compKnee,
