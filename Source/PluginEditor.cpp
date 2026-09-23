@@ -1475,13 +1475,39 @@ void PPGWave3Editor::paint (juce::Graphics& g)
 
     drawLogo (g, headerLogoArea.reduced (10, 6));
 
-    drawSection (g, osc1Area,    "OSCILLATOR 1");
-    drawSection (g, osc2Area,    "OSCILLATOR 2");
-    drawSection (g, filterArea,  "FILTER");
-    drawSection (g, lfoArea,     "LFO");
-    drawSection (g, modArea,     "MODULATION MATRIX");
-    drawSection (g, fxArea,      "EFFECTS");
-    drawSection (g, envArea,     "ENVELOPES");
+    // FASE 7.1b: secciones reorganizadas
+    drawSection (g, osc1Area,   "OSC 1");
+    drawSection (g, osc2Area,   "OSC 2");
+    drawSection (g, filterArea, "FILTER");
+    drawSection (g, envArea,    "ENVELOPES");
+    drawSection (g, lfoArea,    "LFO");
+    drawSection (g, modArea,    "MOD MATRIX");
+
+    // Hueco reservado para el secuenciador (borde discontinuo sutil)
+    if (! seqReservedArea.isEmpty())
+    {
+        const auto r = seqReservedArea.toFloat();
+
+        g.setColour (juce::Colour (0xff141414));
+        g.fillRoundedRectangle (r, 4.0f);
+
+        juce::Path p;
+        p.addRoundedRectangle (r.reduced (0.5f), 4.0f);
+        juce::PathStrokeType stroke (1.0f, juce::PathStrokeType::curved);
+        float dashes[] = { 5.0f, 5.0f };
+        juce::Path dashedPath;
+        stroke.createDashedStroke (dashedPath, p, dashes, 2);
+        g.setColour (juce::Colour (0xff2f2f2f).withAlpha (0.8f));
+        g.strokePath (dashedPath, stroke);
+
+        g.setColour (juce::Colour (0xff3a3a3a));
+        g.setFont (juce::Font (juce::FontOptions (11.0f * currentScale,
+                                                  juce::Font::italic)));
+        g.drawText ("RESERVED FOR STEP SEQUENCER  -  future phase",
+                    seqReservedArea, juce::Justification::centred);
+    }
+
+    drawSection (g, fxArea, "EFFECTS");
 
     if (! keyboardArea.isEmpty())
     {
@@ -1574,8 +1600,7 @@ void PPGWave3Editor::resized()
         // --- Zona central: preset bar ---
         auto presetZone = h;
 
-        // Layout del master zone:
-        // [gap 12] [knob 62x62] [gap 8] [meters column: GR / gap / MST]
+        // --- Master zone ---
         masterZone.removeFromTop (12);
         const int innerH = masterZone.getHeight();
 
@@ -1585,32 +1610,28 @@ void PPGWave3Editor::resized()
         masterZone.removeFromLeft (8);
 
         const int meterH = (innerH - 4) / 2;
-        auto grArea  = masterZone.removeFromTop (meterH);
+        compGrMeter.setBounds (masterZone.removeFromTop (meterH));
         masterZone.removeFromTop (4);
-        auto mstArea = masterZone;
+        masterHztMeter.setBounds (masterZone);
 
-        compGrMeter.setBounds (grArea);
-        masterHztMeter.setBounds (mstArea);
-
-        // Layout del preset zone:
-        // [<] [>] [gap] [PresetDisplay flexible] [gap] [LOAD] [SAVE] [BROWSE] [gap] [★] [FAV]
-        const int navW   = 28;
-        const int smallW = 68;
-        const int medW   = 86;
-        const int starW  = 30;
-        const int favW   = 46;
+        // --- Preset bar (anchos aumentados para evitar truncados) ---
+        const int navW   = 30;
+        const int smallW = 80;
+        const int medW   = 100;
+        const int starW  = 32;
+        const int favW   = 52;
 
         prevBtn.setBounds (presetZone.removeFromLeft (navW));
         nextBtn.setBounds (presetZone.removeFromLeft (navW));
         presetZone.removeFromLeft (8);
 
+        // Se colocan desde la derecha: BROWSE | SAVE | LOAD | FAV | ★
         browseBtn.setBounds (presetZone.removeFromRight (medW));
         presetZone.removeFromRight (4);
         saveBtn  .setBounds (presetZone.removeFromRight (smallW));
         presetZone.removeFromRight (4);
         loadBtn  .setBounds (presetZone.removeFromRight (smallW));
         presetZone.removeFromRight (10);
-
         favoritesOnlyBtn.setBounds (presetZone.removeFromRight (favW));
         presetZone.removeFromRight (2);
         favoriteBtn.setBounds (presetZone.removeFromRight (starW));
@@ -1641,39 +1662,54 @@ void PPGWave3Editor::resized()
     keyboardStrip.removeFromLeft (12);
     keyboardComponent.setBounds (keyboardStrip);
 
-    // ===== Área de módulos =====
+    // ===== Área de contenido (3 filas: top / seq / fx) =====
     r.reduce (6, 6);
 
-    const int h      = r.getHeight();
-    const int gap    = 6;
-    const int availH = h - 6 * gap;
+    const int gap = 6;
+    const int availH = r.getHeight() - 2 * gap;
 
-    const float availHf = (float) availH;
-    const int oscH  = (int) (availHf * 0.095f);
-    const int filtH = (int) (availHf * 0.095f);
-    const int lfoH  = (int) (availHf * 0.105f);
-    const int modH  = (int) (availHf * 0.155f);
-    const int fxH   = (int) (availHf * 0.265f);
-    const int bottomH = availH - 2 * oscH - filtH - lfoH - modH - fxH;
+    const int topRowH = (int) (availH * 0.36f);      // OSC1|OSC2|FILTER|ENV|LFO|MOD
+    const int seqRowH = (int) (availH * 0.22f);      // Secuenciador (vacío)
+    const int fxRowH  = availH - topRowH - seqRowH;  // Effects
 
-    osc1Area = r.removeFromTop (oscH);          r.removeFromTop (gap);
-    osc2Area = r.removeFromTop (oscH);          r.removeFromTop (gap);
-    filterArea = r.removeFromTop (filtH);       r.removeFromTop (gap);
-    lfoArea = r.removeFromTop (lfoH);           r.removeFromTop (gap);
-    modArea = r.removeFromTop (modH);           r.removeFromTop (gap);
-    fxArea  = r.removeFromTop (fxH);            r.removeFromTop (gap);
+    auto topRow   = r.removeFromTop (topRowH);
+    r.removeFromTop (gap);
+    auto seqRow   = r.removeFromTop (seqRowH);
+    r.removeFromTop (gap);
+    auto fxRow    = r.removeFromTop (fxRowH);
 
-    envArea = r;
+    seqReservedArea = seqRow;
+    fxArea = fxRow;
+
+    // ===== Fila superior: 6 columnas =====
+    {
+        const int colGap = 6;
+        const int usableW = topRow.getWidth() - 5 * colGap;
+
+        const int osc1W  = (int) (usableW * 0.14f);
+        const int osc2W  = (int) (usableW * 0.14f);
+        const int filtW  = (int) (usableW * 0.14f);
+        const int envW   = (int) (usableW * 0.20f);
+        const int lfoW   = (int) (usableW * 0.18f);
+        const int modW   = usableW - osc1W - osc2W - filtW - envW - lfoW;
+
+        osc1Area   = topRow.removeFromLeft (osc1W);   topRow.removeFromLeft (colGap);
+        osc2Area   = topRow.removeFromLeft (osc2W);   topRow.removeFromLeft (colGap);
+        filterArea = topRow.removeFromLeft (filtW);   topRow.removeFromLeft (colGap);
+        envArea    = topRow.removeFromLeft (envW);    topRow.removeFromLeft (colGap);
+        lfoArea    = topRow.removeFromLeft (lfoW);    topRow.removeFromLeft (colGap);
+        modArea    = topRow;
+    }
 
     auto infoWidthFor = [] (int sectionW)
     {
-        return juce::jlimit (90, 260, (int) ((float) sectionW * 0.22f));
+        return juce::jlimit (60, 200, (int) ((float) sectionW * 0.30f));
     };
 
     auto titleRowFor = [&] (juce::Rectangle<int> area, InfoDisplay& info,
                             juce::Rectangle<int>& innerOut)
     {
-        innerOut = area.reduced (8);
+        innerOut = area.reduced (6);
         auto titleRow = innerOut.removeFromTop (
             juce::jmax (14, juce::roundToInt (15.0f * currentScale)));
         info.setBounds (titleRow.removeFromRight (
@@ -1681,6 +1717,7 @@ void PPGWave3Editor::resized()
         innerOut.removeFromTop (1);
     };
 
+    // -------- Osciladores (layout compacto) --------
     auto layoutOscSection = [&] (juce::Rectangle<int> area,
                                  InfoDisplay& info, ButtonSelector& waveSel,
                                  ui::WavetablePreview& preview,
@@ -1690,19 +1727,28 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (area, info, inner);
 
-        const int selW = (int) ((float) inner.getWidth() * 0.24f);
-        waveSel.setBounds (inner.removeFromLeft (selW).reduced (2, 3));
-        inner.removeFromLeft (4);
-        const int previewW = (int) ((float) inner.getWidth() * 0.20f);
-        preview.setBounds (inner.removeFromLeft (previewW).reduced (2, 3));
-        inner.removeFromLeft (4);
+        // Wave selector
+        waveSel.setBounds (inner.removeFromTop (22).reduced (0, 1));
+        inner.removeFromTop (3);
 
-        const int kw = inner.getWidth() / 5;
-        kPos  .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        kOct  .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        kSemi .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        kFine .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        kLevel.setBounds (inner.reduced (1, 0));
+        // Preview
+        const int previewH = juce::jmin (55, inner.getHeight() / 3);
+        preview.setBounds (inner.removeFromTop (previewH).reduced (1, 0));
+        inner.removeFromTop (5);
+
+        // 5 knobs: 3 top + 2 bottom
+        const int knobRowH = inner.getHeight() / 2;
+        auto topKnobRow = inner.removeFromTop (knobRowH);
+        auto botKnobRow = inner;
+
+        const int kw3 = topKnobRow.getWidth() / 3;
+        kPos .setBounds (topKnobRow.removeFromLeft (kw3));
+        kOct .setBounds (topKnobRow.removeFromLeft (kw3));
+        kSemi.setBounds (topKnobRow);
+
+        const int kw2 = botKnobRow.getWidth() / 2;
+        kFine .setBounds (botKnobRow.removeFromLeft (kw2));
+        kLevel.setBounds (botKnobRow);
     };
 
     layoutOscSection (osc1Area, osc1Info, *osc1Wave, osc1Preview,
@@ -1710,46 +1756,96 @@ void PPGWave3Editor::resized()
     layoutOscSection (osc2Area, osc2Info, *osc2Wave, osc2Preview,
                       osc2Pos, osc2Oct, osc2Semi, osc2Fine, osc2Level);
 
+    // -------- Filtro (compacto) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (filterArea, filterInfo, inner);
-        const int selW = (int) ((float) inner.getWidth() * 0.22f);
-        filterType->setBounds (inner.removeFromLeft (selW).reduced (2, 3));
-        inner.removeFromLeft (4);
-        const int kw = inner.getWidth() / 4;
-        filterCutoff  .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        filterReso    .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        filterEnvAmt  .setBounds (inner.removeFromLeft (kw).reduced (1, 0));
-        filterKeyTrack.setBounds (inner.reduced (1, 0));
+
+        filterType->setBounds (inner.removeFromTop (22).reduced (0, 1));
+        inner.removeFromTop (5);
+
+        // 4 knobs: 2 top + 2 bottom
+        const int knobRowH = inner.getHeight() / 2;
+        auto topKnobRow = inner.removeFromTop (knobRowH);
+        auto botKnobRow = inner;
+
+        const int kw2 = topKnobRow.getWidth() / 2;
+        filterCutoff.setBounds (topKnobRow.removeFromLeft (kw2));
+        filterReso  .setBounds (topKnobRow);
+        filterEnvAmt.setBounds (botKnobRow.removeFromLeft (kw2));
+        filterKeyTrack.setBounds (botKnobRow);
     }
 
+    // -------- Envelopes (compacto) --------
+    {
+        juce::Rectangle<int> inner;
+        titleRowFor (envArea, envInfo, inner);
+
+        // Tabs
+        auto tabRow = inner.removeFromTop (22);
+        const int tabW = tabRow.getWidth() / 3;
+        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
+        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
+        env3TabBtn.setBounds (tabRow.reduced (1, 0));
+        inner.removeFromTop (4);
+
+        // Display
+        const int dispH = juce::jmin (60, inner.getHeight() / 2);
+        auto dispRow = inner.removeFromTop (dispH).reduced (1, 0);
+        env1Display.setBounds (dispRow);
+        env2Display.setBounds (dispRow);
+        env3Display.setBounds (dispRow);
+        inner.removeFromTop (4);
+
+        // 4 knobs (A D S R)
+        const int kw = inner.getWidth() / 4;
+        env1A.setBounds (inner.removeFromLeft (kw));
+        env1D.setBounds (inner.removeFromLeft (kw));
+        env1S.setBounds (inner.removeFromLeft (kw));
+        env1R.setBounds (inner);
+        env2A.setBounds (env1A.getBounds());
+        env2D.setBounds (env1D.getBounds());
+        env2S.setBounds (env1S.getBounds());
+        env2R.setBounds (env1R.getBounds());
+        env3A.setBounds (env1A.getBounds());
+        env3D.setBounds (env1D.getBounds());
+        env3S.setBounds (env1S.getBounds());
+        env3R.setBounds (env1R.getBounds());
+    }
+
+    // -------- LFO (stack vertical: LFO1 arriba, LFO2 abajo) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (lfoArea, lfoInfo, inner);
-        const int halfW = (inner.getWidth() - gap) / 2;
+
+        const int halfH = (inner.getHeight() - 4) / 2;
+        auto lfo1Zone = inner.removeFromTop (halfH);
+        inner.removeFromTop (4);
+        auto lfo2Zone = inner;
 
         auto layoutLFO = [&] (juce::Rectangle<int> area,
                               ComboBoxSelector& w, ComboBoxSelector& sync,
                               ui::LFODisplay& display,
                               RotaryKnob& rate, RotaryKnob& depth, RotaryKnob& phase)
         {
-            const int comboW = (int) ((float) area.getWidth() * 0.16f);
-            w.setBounds (area.removeFromLeft (comboW).reduced (2, 0));
-            area.removeFromLeft (2);
-            sync.setBounds (area.removeFromLeft (comboW).reduced (2, 0));
-            area.removeFromLeft (4);
-            const int dispW = (int) ((float) area.getWidth() * 0.30f);
-            display.setBounds (area.removeFromLeft (dispW).reduced (2, 3));
-            area.removeFromLeft (4);
-            const int kw = area.getWidth() / 3;
-            rate .setBounds (area.removeFromLeft (kw).reduced (1, 0));
-            depth.setBounds (area.removeFromLeft (kw).reduced (1, 0));
-            phase.setBounds (area.reduced (1, 0));
-        };
+            // Combo row: WAVE | SYNC
+            auto comboRow = area.removeFromTop (22);
+            const int comboW = comboRow.getWidth() / 2;
+            w   .setBounds (comboRow.removeFromLeft (comboW).reduced (1, 0));
+            sync.setBounds (comboRow.reduced (1, 0));
+            area.removeFromTop (3);
 
-        auto lfo1Zone = inner.removeFromLeft (halfW);
-        inner.removeFromLeft (gap);
-        auto lfo2Zone = inner;
+            // Display
+            const int dispH = juce::jmin (36, area.getHeight() / 2);
+            display.setBounds (area.removeFromTop (dispH).reduced (1, 0));
+            area.removeFromTop (3);
+
+            // 3 knobs
+            const int kw = area.getWidth() / 3;
+            rate .setBounds (area.removeFromLeft (kw));
+            depth.setBounds (area.removeFromLeft (kw));
+            phase.setBounds (area);
+        };
 
         layoutLFO (lfo1Zone, *lfo1Wave, *lfo1Sync, lfo1Display,
                    lfo1Rate, lfo1Depth, lfo1Phase);
@@ -1757,19 +1853,21 @@ void PPGWave3Editor::resized()
                    lfo2Rate, lfo2Depth, lfo2Phase);
     }
 
+    // -------- Mod Matrix (compacto) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
+
         const int rowH = inner.getHeight() / 4;
 
         auto layoutRow = [&] (juce::Rectangle<int> row,
                               ComboBoxSelector& src, ComboBoxSelector& dst, HSlider& amt)
         {
-            const int srcW = (int) ((float) row.getWidth() * 0.35f);
-            const int dstW = (int) ((float) row.getWidth() * 0.35f);
-            src.setBounds (row.removeFromLeft (srcW).reduced (2, 1));
-            dst.setBounds (row.removeFromLeft (dstW).reduced (2, 1));
-            amt.setBounds (row.reduced (2, 1));
+            const int srcW = (int) ((float) row.getWidth() * 0.34f);
+            const int dstW = (int) ((float) row.getWidth() * 0.34f);
+            src.setBounds (row.removeFromLeft (srcW).reduced (1, 1));
+            dst.setBounds (row.removeFromLeft (dstW).reduced (1, 1));
+            amt.setBounds (row.reduced (1, 1));
         };
 
         layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
@@ -1778,6 +1876,7 @@ void PPGWave3Editor::resized()
         layoutRow (inner,                        *mod4Src, *mod4Dst, mod4Amt);
     }
 
+    // -------- Effects (ancho completo, altura holgada) --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (fxArea, fxInfo, inner);
@@ -1804,7 +1903,6 @@ void PPGWave3Editor::resized()
             auto toggleArea = area.removeFromLeft (110);
             on.setBounds (toggleArea.withSizeKeepingCentre (
                 toggleArea.getWidth() - 12, 40));
-
             area.removeFromLeft (24);
 
             const int kw = area.getWidth() / 3;
@@ -1850,12 +1948,10 @@ void PPGWave3Editor::resized()
         // Vintage
         {
             auto area = controlsArea;
-
             const int toggleW = 110;
             auto toggleCol = area.removeFromLeft (toggleW);
             vintageOn->setBounds (toggleCol.withSizeKeepingCentre (
                 toggleCol.getWidth() - 12, 40));
-
             area.removeFromLeft (24);
 
             const int rowGap = 6;
@@ -1878,7 +1974,6 @@ void PPGWave3Editor::resized()
         // EQ
         {
             auto area = controlsArea;
-
             const int topRowH = 26;
             auto topRow = area.removeFromTop (topRowH);
             area.removeFromTop (4);
@@ -1892,7 +1987,6 @@ void PPGWave3Editor::resized()
             eqLmidBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
             eqHmidBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
             eqHighBtn.setBounds (topRow.removeFromLeft (bandW).reduced (2, 2));
-
             topRow.removeFromLeft (8);
 
             const int hpLpW = juce::jmin (70, topRow.getWidth() / 2);
@@ -1900,7 +1994,6 @@ void PPGWave3Editor::resized()
             eqLpOn->setBounds (topRow.removeFromLeft (hpLpW).reduced (2, 2));
 
             auto bottomRow = area;
-
             const int knobZoneW = (int) ((float) bottomRow.getWidth() * 0.40f);
             auto knobZone = bottomRow.removeFromRight (knobZoneW);
             bottomRow.removeFromRight (6);
@@ -1917,13 +2010,11 @@ void PPGWave3Editor::resized()
         // Compressor
         {
             auto area = controlsArea;
-
             const int toggleColW = 110;
             auto toggleCol = area.removeFromLeft (toggleColW);
             const int halfToggleH = toggleCol.getHeight() / 2;
             compOn->setBounds (toggleCol.removeFromTop (halfToggleH).reduced (0, 2));
             compSidechain->setBounds (toggleCol.reduced (0, 2));
-
             area.removeFromLeft (24);
 
             const int rowGap = 6;
@@ -1943,45 +2034,6 @@ void PPGWave3Editor::resized()
             compMakeup   .setBounds (botKnobRow.removeFromLeft (kwBot).reduced (4, 0));
             compScAmount .setBounds (botKnobRow.reduced (4, 0));
         }
-    }
-
-    // Envelopes (a todo el ancho)
-    {
-        juce::Rectangle<int> inner;
-        titleRowFor (envArea, envInfo, inner);
-
-        auto tabRow = inner.removeFromTop (24);
-        const int tabW = tabRow.getWidth() / 3;
-        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 0));
-        env3TabBtn.setBounds (tabRow.reduced (1, 0));
-
-        inner.removeFromTop (6);
-
-        auto drawArea = inner;
-
-        const int dispH = (int) ((float) drawArea.getHeight() * 0.42f);
-        auto dispRow = drawArea.removeFromTop (dispH).reduced (2, 2);
-        env1Display.setBounds (dispRow);
-        env2Display.setBounds (dispRow);
-        env3Display.setBounds (dispRow);
-
-        drawArea.removeFromTop (2);
-
-        const int kw = drawArea.getWidth() / 4;
-        auto layoutKnobRow = [&] (RotaryKnob& a, RotaryKnob& d,
-                                  RotaryKnob& s, RotaryKnob& rr)
-        {
-            auto row = drawArea;
-            a .setBounds (row.removeFromLeft (kw).reduced (1, 0));
-            d .setBounds (row.removeFromLeft (kw).reduced (1, 0));
-            s .setBounds (row.removeFromLeft (kw).reduced (1, 0));
-            rr.setBounds (row.reduced (1, 0));
-        };
-
-        layoutKnobRow (env1A, env1D, env1S, env1R);
-        layoutKnobRow (env2A, env2D, env2S, env2R);
-        layoutKnobRow (env3A, env3D, env3S, env3R);
     }
 
     repaint();
