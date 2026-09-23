@@ -38,7 +38,6 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    // 1. BPM del host
     if (auto* ph = getPlayHead())
     {
         if (auto pos = ph->getPosition())
@@ -48,7 +47,6 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    // 2. Reflejar notas DAW en el teclado virtual
     for (const auto metadata : midi)
     {
         const auto msg = metadata.getMessage();
@@ -58,10 +56,8 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
             keyboardState.noteOff (msg.getChannel(), msg.getNoteNumber(), msg.getFloatVelocity());
     }
 
-    // 3. Inyectar notas del teclado virtual
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
 
-    // 4. Pitch Bend y Mod Wheel
     {
         const int pbValue = juce::jlimit (0, 16383,
             (int) std::lround (8192.0f + pitchBendAtomic.load() * 8192.0f));
@@ -72,10 +68,8 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         midi.addEvent (juce::MidiMessage::controllerEvent (1, 1, mwValue), 0);
     }
 
-    // 5. Sintetizador
     synth.renderNextBlock (buffer, midi, 0, buffer.getNumSamples());
 
-    // 6. Efectos globales
     auto getF = [&] (const char* id, float def) -> float
     {
         if (auto* p = apvts.getRawParameterValue (id)) return p->load();
@@ -167,12 +161,11 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                            getF (ParamIDs::compKnee,      6.0f),
                            getF (ParamIDs::compMakeup,    0.0f),
                            getB (ParamIDs::compSidechain, false),
-                           getF (ParamIDs::compScAmount,  1.0f));
+                           getF (ParamIDs::compScAmount,  1.0f),
+                           &compressorGR);
 
-    // 7. Procesar efectos (sin sidechain externo)
     effects.process (buffer);
 
-    // 8. VU meter
     {
         float peak = 0.0f;
         for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
