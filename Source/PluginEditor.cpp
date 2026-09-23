@@ -1578,7 +1578,6 @@ void PPGWave3Editor::resized()
 
         auto presetZone = h;
 
-        // Master zone
         const int innerH = masterZone.getHeight();
         auto knobArea = masterZone.removeFromLeft (38);
         master.setBounds (knobArea.withSizeKeepingCentre (36, juce::jmin (innerH, 36)));
@@ -1589,7 +1588,6 @@ void PPGWave3Editor::resized()
         masterZone.removeFromTop (3);
         masterHztMeter.setBounds (masterZone);
 
-        // Preset bar: LOAD/SAVE/BROWSE a 40px
         const int navW   = 24;
         const int smallW = 40;
         const int medW   = 40;
@@ -1641,14 +1639,14 @@ void PPGWave3Editor::resized()
         keyboardComponent.setKeyWidth (juce::jmax (12.0f, kw));
     }
 
-    // ===== Área de contenido: top / seq / fx =====
+    // ===== Área de contenido =====
     r.reduce (6, 6);
 
     const int gap = 6;
     const int availH = r.getHeight() - 2 * gap;
 
-    const int topRowH = (int) (availH * 0.42f);
-    const int seqRowH = (int) (availH * 0.16f);
+    const int topRowH = (int) (availH * 0.32f);
+    const int seqRowH = (int) (availH * 0.36f);
     const int fxRowH  = availH - topRowH - seqRowH;
 
     auto topRow = r.removeFromTop (topRowH);
@@ -1696,7 +1694,7 @@ void PPGWave3Editor::resized()
         innerOut.removeFromTop (1);
     };
 
-    // -------- OSC: POS/OCT/SEMI 48px, FINE/LEVEL 57×113 --------
+    // -------- OSC --------
     auto layoutOscSection = [&] (juce::Rectangle<int> area,
                                  InfoDisplay& info, ButtonSelector& waveSel,
                                  ui::WavetablePreview& preview,
@@ -1706,15 +1704,12 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (area, info, inner);
 
-        // Wave selector
         waveSel.setBounds (inner.removeFromTop (20).reduced (0, 1));
         inner.removeFromTop (3);
 
-        // Preview 66px
-        preview.setBounds (inner.removeFromTop (66).reduced (1, 0));
+        preview.setBounds (inner.removeFromTop (60).reduced (1, 0));
         inner.removeFromTop (4);
 
-        // Fila 1: POS, OCT, SEMI (48×62)
         auto topKnobRow = inner.removeFromTop (62);
         {
             const int kw = 48;
@@ -1728,8 +1723,8 @@ void PPGWave3Editor::resized()
         }
         inner.removeFromTop (6);
 
-        // Fila 2: FINE, LEVEL (57×113)
-        auto botKnobRow = inner.removeFromTop (juce::jmin (113, inner.getHeight()));
+        const int botH = juce::jmin (90, inner.getHeight());
+        auto botKnobRow = inner.removeFromTop (botH);
         {
             const int kw = 57;
             const int spacing = (botKnobRow.getWidth() - 2 * kw) / 3;
@@ -1745,7 +1740,7 @@ void PPGWave3Editor::resized()
     layoutOscSection (osc2Area, osc2Info, *osc2Wave, osc2Preview,
                       osc2Pos, osc2Oct, osc2Semi, osc2Fine, osc2Level);
 
-    // -------- FILTER: CUTOFF/RESO/ENV AMT/KEY TRK (57×113) --------
+    // -------- FILTER --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (filterArea, filterInfo, inner);
@@ -1753,9 +1748,9 @@ void PPGWave3Editor::resized()
         filterType->setBounds (inner.removeFromTop (20).reduced (0, 1));
         inner.removeFromTop (4);
 
-        auto topKnobRow = inner.removeFromTop (113);
-        auto botKnobRow = inner.removeFromTop (113);
+        const int rowH = juce::jmin (90, inner.getHeight() / 2);
 
+        auto topKnobRow = inner.removeFromTop (rowH);
         {
             const int kw = 57;
             const int spacing = (topKnobRow.getWidth() - 2 * kw) / 3;
@@ -1764,6 +1759,8 @@ void PPGWave3Editor::resized()
             topKnobRow.removeFromLeft (spacing);
             filterReso  .setBounds (topKnobRow.removeFromLeft (kw));
         }
+        inner.removeFromTop (4);
+        auto botKnobRow = inner.removeFromTop (rowH);
         {
             const int kw = 57;
             const int spacing = (botKnobRow.getWidth() - 2 * kw) / 3;
@@ -1774,7 +1771,7 @@ void PPGWave3Editor::resized()
         }
     }
 
-    // -------- ENVELOPES: display 160px, knobs 48px --------
+    // -------- ENVELOPES --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (envArea, envInfo, inner);
@@ -1786,7 +1783,6 @@ void PPGWave3Editor::resized()
         env3TabBtn.setBounds (tabRow.reduced (1, 0));
         inner.removeFromTop (3);
 
-        // Knobs al pie (48×62) - los coloco primero desde abajo
         auto knobRow = inner.removeFromBottom (62);
         {
             const int kw = 48;
@@ -1811,14 +1807,13 @@ void PPGWave3Editor::resized()
 
         inner.removeFromBottom (4);
 
-        // Display 160px
-        auto dispRow = inner.removeFromTop (juce::jmin (160, inner.getHeight()));
+        auto dispRow = inner.removeFromTop (juce::jmin (120, inner.getHeight()));
         env1Display.setBounds (dispRow);
         env2Display.setBounds (dispRow);
         env3Display.setBounds (dispRow);
     }
 
-    // -------- LFO: display 32px, knobs 48px --------
+    // -------- LFO --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (lfoArea, lfoInfo, inner);
@@ -1839,11 +1834,9 @@ void PPGWave3Editor::resized()
             sync.setBounds (comboRow.reduced (1, 0));
             area.removeFromTop (3);
 
-            // Display 32px
-            display.setBounds (area.removeFromTop (32).reduced (1, 0));
+            display.setBounds (area.removeFromTop (28).reduced (1, 0));
             area.removeFromTop (4);
 
-            // 3 knobs de 48px
             auto knobRow = area.removeFromTop (juce::jmin (62, area.getHeight()));
             const int kw = 48;
             const int spacing = (knobRow.getWidth() - 3 * kw) / 4;
@@ -1861,195 +1854,212 @@ void PPGWave3Editor::resized()
                    lfo2Rate, lfo2Depth, lfo2Phase);
     }
 
-    // -------- MOD MATRIX: 4 filas de 57px --------
+    // -------- MOD MATRIX --------
     {
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
 
-        const int rowH = 57;
-        auto rowsArea = inner;
-
-        // Centrar verticalmente el stack
-        const int usedH = 4 * rowH;
-        if (usedH < rowsArea.getHeight())
-            rowsArea.removeFromTop ((rowsArea.getHeight() - usedH) / 2);
+        const int rowH = 50;
 
         auto layoutRow = [&] (juce::Rectangle<int> row,
                               ComboBoxSelector& src, ComboBoxSelector& dst, HSlider& amt)
         {
             const int srcW = (int) ((float) row.getWidth() * 0.34f);
             const int dstW = (int) ((float) row.getWidth() * 0.34f);
-            src.setBounds (row.removeFromLeft (srcW).reduced (1, 4));
-            dst.setBounds (row.removeFromLeft (dstW).reduced (1, 4));
-            amt.setBounds (row.reduced (1, 4));
+            src.setBounds (row.removeFromLeft (srcW).reduced (1, 3));
+            dst.setBounds (row.removeFromLeft (dstW).reduced (1, 3));
+            amt.setBounds (row.reduced (1, 3));
         };
 
-        layoutRow (rowsArea.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
-        layoutRow (rowsArea.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
-        layoutRow (rowsArea.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
-        layoutRow (rowsArea.removeFromTop (rowH), *mod4Src, *mod4Dst, mod4Amt);
+        layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
+        layoutRow (inner.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
+        layoutRow (inner.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
+        layoutRow (inner,                        *mod4Src, *mod4Dst, mod4Amt);
     }
 
-    // ==================== EFFECTS: 8 columnas con cajas ====================
+    // ==================== EFFECTS: 8 columnas con anchos por unidad ====================
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
         const int colGap = 4;
         const int numCols = 8;
+
+        const float units[8] = { 1.0f, 1.0f, 1.2f, 1.2f, 1.0f, 1.8f, 2.5f, 1.8f };
+        float totalUnits = 0.0f;
+        for (float u : units) totalUnits += u;
+
         const int usableW = inner.getWidth() - (numCols - 1) * colGap;
+        const float unitPx = (float) usableW / totalUnits;
 
-        const int totalUnits = numCols + 1;   // 9 (EQ = 2)
-        const int unitW = usableW / totalUnits;
-        const int stdW = unitW;
-        const int eqW  = 2 * unitW;
-
-        // Distribuye todas las columnas y guarda sus rects
         int x = inner.getX();
         const int y = inner.getY();
         const int colH = inner.getHeight();
+        for (int i = 0; i < 8; ++i)
+        {
+            const int w = (int) (units[i] * unitPx);
+            fxColumnAreas[i] = { x, y, w, colH };
+            x += w + colGap;
+        }
 
-        fxColumnAreas[0] = { x, y, stdW, colH }; x += stdW + colGap;   // DIST
-        fxColumnAreas[1] = { x, y, stdW, colH }; x += stdW + colGap;   // CHORUS
-        fxColumnAreas[2] = { x, y, stdW, colH }; x += stdW + colGap;   // PHASER
-        fxColumnAreas[3] = { x, y, stdW, colH }; x += stdW + colGap;   // DELAY
-        fxColumnAreas[4] = { x, y, stdW, colH }; x += stdW + colGap;   // REVERB
-        fxColumnAreas[5] = { x, y, stdW, colH }; x += stdW + colGap;   // VINTAGE
-        fxColumnAreas[6] = { x, y, eqW,  colH }; x += eqW  + colGap;   // EQ
-        fxColumnAreas[7] = { x, y, stdW, colH };                        // COMP
-
-        // ---- Helper: layout estándar de una columna ----
-        const int knobItemH = 62;
         const int headerH = 22;
 
-        auto setupCol = [&] (int idx, FxTab& tab,
-                             std::initializer_list<juce::Component*> knobs)
+        auto layoutColUniform = [&] (int idx, FxTab& tab,
+                                     std::initializer_list<juce::Component*> knobs)
         {
-            auto col = fxColumnAreas[idx].reduced (4, 4);
+            auto col = fxColumnAreas[idx].reduced (6, 6);
             tab.setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (4);
+            col.removeFromTop (6);
 
-            layoutKnobStackBottom (col, knobs, knobItemH);
+            const int n = (int) knobs.size();
+            if (n == 0) return;
+
+            auto* arr = const_cast<juce::Component**> (knobs.begin());
+            const int h = col.getHeight() / n;
+            for (int i = 0; i < n; ++i)
+                arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
         };
 
-        setupCol (0, *driveTab,   { &driveAmount, &driveTone, &driveMix });
-        setupCol (1, *chorusTab,  { &chorusRate, &chorusDepth, &chorusMix });
-        setupCol (2, *phaserTab,  { &phaserRate, &phaserDepth, &phaserFeedback, &phaserMix });
-        setupCol (4, *reverbTab,  { &reverbSize, &reverbDamp, &reverbMix });
+        layoutColUniform (0, *driveTab,  { &driveAmount, &driveTone, &driveMix });
+        layoutColUniform (1, *chorusTab, { &chorusRate, &chorusDepth, &chorusMix });
 
-        // ---- DELAY: SYNC combo + 3 knobs ----
+        // PHASER: 2×2
         {
-            auto col = fxColumnAreas[3].reduced (4, 4);
+            auto col = fxColumnAreas[2].reduced (6, 6);
+            phaserTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
+            col.removeFromTop (6);
+
+            const int halfH = col.getHeight() / 2;
+            auto row1 = col.removeFromTop (halfH);
+            auto row2 = col;
+
+            const int halfW1 = row1.getWidth() / 2;
+            phaserRate .setBounds (row1.removeFromLeft (halfW1).reduced (2, 2));
+            phaserDepth.setBounds (row1.reduced (2, 2));
+
+            const int halfW2 = row2.getWidth() / 2;
+            phaserFeedback.setBounds (row2.removeFromLeft (halfW2).reduced (2, 2));
+            phaserMix     .setBounds (row2.reduced (2, 2));
+        }
+
+        // DELAY
+        {
+            auto col = fxColumnAreas[3].reduced (6, 6);
             delayTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (3);
 
             delaySync->setBounds (col.removeFromTop (26));
+            col.removeFromTop (6);
 
-            col.removeFromTop (4);
-
-            layoutKnobStackBottom (col,
-                                   { &delayTime, &delayFeedback, &delayMix },
-                                   knobItemH);
+            const int n = 3;
+            auto* arr[] = { (juce::Component*) &delayTime,
+                            (juce::Component*) &delayFeedback,
+                            (juce::Component*) &delayMix };
+            const int h = col.getHeight() / n;
+            for (int i = 0; i < n; ++i)
+                arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
         }
 
-        // ---- VINTAGE: 2 sub-columnas ----
-        {
-            auto col = fxColumnAreas[5].reduced (4, 4);
-            vintageTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (4);
+        layoutColUniform (4, *reverbTab, { &reverbSize, &reverbDamp, &reverbMix });
 
-            const int subGap = 2;
+        // VINTAGE
+        {
+            auto col = fxColumnAreas[5].reduced (6, 6);
+            vintageTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
+            col.removeFromTop (6);
+
+            const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
             auto leftSub  = col.removeFromLeft (subW);
             col.removeFromLeft (subGap);
             auto rightSub = col;
 
-            layoutKnobStackBottom (leftSub,
-                                   { &vintageAmount, &vintageBits, &vintageSr },
-                                   knobItemH);
-            layoutKnobStackBottom (rightSub,
-                                   { &vintageNoise, &vintageDrift, &vintageVar },
-                                   knobItemH);
+            const int n = 3;
+            auto* arrL[] = { (juce::Component*) &vintageAmount,
+                             (juce::Component*) &vintageBits,
+                             (juce::Component*) &vintageSr };
+            auto* arrR[] = { (juce::Component*) &vintageNoise,
+                             (juce::Component*) &vintageDrift,
+                             (juce::Component*) &vintageVar };
+
+            const int hL = leftSub.getHeight() / n;
+            const int hR = rightSub.getHeight() / n;
+            for (int i = 0; i < n; ++i)
+            {
+                arrL[i]->setBounds (leftSub.removeFromTop (hL).reduced (1, 2));
+                arrR[i]->setBounds (rightSub.removeFromTop (hR).reduced (1, 2));
+            }
         }
 
-        // ---- EQ (doble ancho): reorganización vertical ----
+        // EQ
         {
-            auto col = fxColumnAreas[6].reduced (4, 4);
+            auto col = fxColumnAreas[6].reduced (6, 6);
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (4);
+            col.removeFromTop (6);
 
-            // Curva EQ (ocupa ~30% de la altura restante)
-            const int curveH = juce::jlimit (40, 80, (int) (col.getHeight() * 0.28f));
+            const int curveH = juce::jlimit (50, 90, (int) (col.getHeight() * 0.28f));
             eqCurveDisplay.setBounds (col.removeFromTop (curveH).reduced (0, 1));
-            col.removeFromTop (4);
+            col.removeFromTop (6);
 
-            // Botones LOW LMID HMID HIGH
             auto bandRow = col.removeFromTop (20);
             const int bandW = bandRow.getWidth() / 4;
             eqLowBtn .setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqLmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqHmidBtn.setBounds (bandRow.removeFromLeft (bandW).reduced (1, 0));
             eqHighBtn.setBounds (bandRow.reduced (1, 0));
-            col.removeFromTop (6);
+            col.removeFromTop (8);
 
-            // Fila final: [HP] [FREQ] [Q] [GAIN] [LP]
-            // El stack se alinea al fondo.
-            const int rowH = 62;
-            const int finalRowH = juce::jmin (rowH, col.getHeight());
-            col.removeFromTop (col.getHeight() - finalRowH);
+            const int finalRowH = 62;
+            col.removeFromTop (juce::jmax (0, col.getHeight() - finalRowH));
 
             const int totalW = col.getWidth();
             const int elemGap = 4;
             const int elemW = (totalW - 4 * elemGap) / 5;
 
-            // HP
             eqHpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 48));
-
             col.removeFromLeft (elemGap);
             eqFreqKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqQKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqGainKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqLpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 48));
         }
 
-        // ---- COMP: 2 sub-columnas con SC 48×48 ----
+        // COMP
         {
-            auto col = fxColumnAreas[7].reduced (4, 4);
+            auto col = fxColumnAreas[7].reduced (6, 6);
             compTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (4);
+            col.removeFromTop (6);
 
-            const int subGap = 2;
+            const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
             auto leftSub  = col.removeFromLeft (subW);
             col.removeFromLeft (subGap);
             auto rightSub = col;
 
-            // Izquierda: THRSH RATIO ATTACK RELEASE
-            layoutKnobStackBottom (leftSub,
-                                   { &compThreshold, &compRatio, &compAttack, &compRelease },
-                                   knobItemH);
+            const int nL = 4;
+            auto* arrL[] = { (juce::Component*) &compThreshold,
+                             (juce::Component*) &compRatio,
+                             (juce::Component*) &compAttack,
+                             (juce::Component*) &compRelease };
+            const int hL = leftSub.getHeight() / nL;
+            for (int i = 0; i < nL; ++i)
+                arrL[i]->setBounds (leftSub.removeFromTop (hL).reduced (1, 2));
 
-            // Derecha: KNEE MAKEUP SC AMT + SC (48×48)
-            // El SC toggle va al fondo, con altura fija 48.
-            const int itemH = knobItemH;
-            rightSub = rightSub.reduced (2, 0);
-
-            // Reservar 48px al fondo para el toggle SC
             auto scArea = rightSub.removeFromBottom (48);
             compSidechain->setBounds (scArea.withSizeKeepingCentre (48, 48));
+            rightSub.removeFromBottom (6);
 
-            rightSub.removeFromBottom (4);
-
-            layoutKnobStackBottom (rightSub,
-                                   { &compKnee, &compMakeup, &compScAmount },
-                                   itemH);
+            const int nR = 3;
+            auto* arrR[] = { (juce::Component*) &compKnee,
+                             (juce::Component*) &compMakeup,
+                             (juce::Component*) &compScAmount };
+            const int hR = rightSub.getHeight() / nR;
+            for (int i = 0; i < nR; ++i)
+                arrR[i]->setBounds (rightSub.removeFromTop (hR).reduced (1, 2));
         }
     }
 
