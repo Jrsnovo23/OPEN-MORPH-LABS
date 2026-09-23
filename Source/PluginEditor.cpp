@@ -770,52 +770,52 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
       vintageTab (std::make_unique<FxTab> (p.apvts, ParamIDs::vintageOn, "VINTAGE")),
       eqTab      (std::make_unique<FxTab> (p.apvts, ParamIDs::eqOn,      "EQ")),
       compTab    (std::make_unique<FxTab> (p.apvts, ParamIDs::compOn,    "COMP")),
-      driveAmount (p.apvts, ParamIDs::driveAmount, "AMT",  &fxInfo),
-      driveTone   (p.apvts, ParamIDs::driveTone,   "TONE", &fxInfo),
-      driveMix    (p.apvts, ParamIDs::driveMix,    "MIX",  &fxInfo),
-      chorusRate  (p.apvts, ParamIDs::chorusRate,  "RATE",  &fxInfo),
-      chorusDepth (p.apvts, ParamIDs::chorusDepth, "DEPTH", &fxInfo),
-      chorusMix   (p.apvts, ParamIDs::chorusMix,   "MIX",   &fxInfo),
-      delaySync (std::make_unique<ComboBoxSelector> (p.apvts, ParamIDs::delaySync, "SYNC", &fxInfo)),
-      delayTime     (p.apvts, ParamIDs::delayTime,     "TIME",  &fxInfo),
-      delayFeedback (p.apvts, ParamIDs::delayFeedback, "FEEDBK",&fxInfo),
-      delayMix      (p.apvts, ParamIDs::delayMix,      "MIX",   &fxInfo),
-      reverbSize (p.apvts, ParamIDs::reverbSize, "SIZE", &fxInfo),
-      reverbDamp (p.apvts, ParamIDs::reverbDamp, "DAMP", &fxInfo),
-      reverbMix  (p.apvts, ParamIDs::reverbMix,  "MIX",  &fxInfo),
-      vintageAmount (p.apvts, ParamIDs::vintageAmount, "AMOUNT", &fxInfo),
-      vintageBits   (p.apvts, ParamIDs::vintageBits,   "BITS",   &fxInfo),
-      vintageSr     (p.apvts, ParamIDs::vintageSr,     "SR",     &fxInfo),
-      vintageNoise  (p.apvts, ParamIDs::vintageNoise,  "NOISE",  &fxInfo),
-      vintageDrift  (p.apvts, ParamIDs::vintageDrift,  "DRIFT",  &fxInfo),
-      vintageVar    (p.apvts, ParamIDs::vintageVar,    "VAR",    &fxInfo),
-      eqHpOn (std::make_unique<ToggleButton> (p.apvts, ParamIDs::eqHpOn, "HP", &fxInfo)),
-      eqLpOn (std::make_unique<ToggleButton> (p.apvts, ParamIDs::eqLpOn, "LP", &fxInfo)),
+      driveAmount (p.apvts, ParamIDs::driveAmount, "AMT",  &fxInfoDrive),
+      driveTone   (p.apvts, ParamIDs::driveTone,   "TONE", &fxInfoDrive),
+      driveMix    (p.apvts, ParamIDs::driveMix,    "MIX",  &fxInfoDrive),
+      chorusRate  (p.apvts, ParamIDs::chorusRate,  "RATE",  &fxInfoChorus),
+      chorusDepth (p.apvts, ParamIDs::chorusDepth, "DEPTH", &fxInfoChorus),
+      chorusMix   (p.apvts, ParamIDs::chorusMix,   "MIX",   &fxInfoChorus),
+      delaySync (std::make_unique<ComboBoxSelector> (p.apvts, ParamIDs::delaySync, "SYNC", &fxInfoDelay)),
+      delayTime     (p.apvts, ParamIDs::delayTime,     "TIME",  &fxInfoDelay),
+      delayFeedback (p.apvts, ParamIDs::delayFeedback, "FEEDBK",&fxInfoDelay),
+      delayMix      (p.apvts, ParamIDs::delayMix,      "MIX",   &fxInfoDelay),
+      reverbSize (p.apvts, ParamIDs::reverbSize, "SIZE", &fxInfoReverb),
+      reverbDamp (p.apvts, ParamIDs::reverbDamp, "DAMP", &fxInfoReverb),
+      reverbMix  (p.apvts, ParamIDs::reverbMix,  "MIX",  &fxInfoReverb),
+      vintageAmount (p.apvts, ParamIDs::vintageAmount, "AMOUNT", &fxInfoVintage),
+      vintageBits   (p.apvts, ParamIDs::vintageBits,   "BITS",   &fxInfoVintage),
+      vintageSr     (p.apvts, ParamIDs::vintageSr,     "SR",     &fxInfoVintage),
+      vintageNoise  (p.apvts, ParamIDs::vintageNoise,  "NOISE",  &fxInfoVintage),
+      vintageDrift  (p.apvts, ParamIDs::vintageDrift,  "DRIFT",  &fxInfoVintage),
+      vintageVar    (p.apvts, ParamIDs::vintageVar,    "VAR",    &fxInfoVintage),
+      eqHpOn (std::make_unique<ToggleButton> (p.apvts, ParamIDs::eqHpOn, "HP", &fxInfoEq)),
+      eqLpOn (std::make_unique<ToggleButton> (p.apvts, ParamIDs::eqLpOn, "LP", &fxInfoEq)),
       eqFreqKnob (p.apvts,
                   { ParamIDs::eqLowFreq, ParamIDs::eqLmidFreq,
                     ParamIDs::eqHmidFreq, ParamIDs::eqHighFreq },
-                  "FREQ", &fxInfo),
+                  "FREQ", &fxInfoEq),
       eqQKnob    (p.apvts,
                   { ParamIDs::eqLowQ, ParamIDs::eqLmidQ,
                     ParamIDs::eqHmidQ, ParamIDs::eqHighQ },
-                  "Q", &fxInfo),
+                  "Q", &fxInfoEq),
       eqGainKnob (p.apvts,
                   { ParamIDs::eqLowGain, ParamIDs::eqLmidGain,
                     ParamIDs::eqHmidGain, ParamIDs::eqHighGain },
-                  "GAIN", &fxInfo),
+                  "GAIN", &fxInfoEq),
       eqCurveDisplay (p.apvts),
-      phaserRate     (p.apvts, ParamIDs::phaserRate,     "RATE",  &fxInfo),
-      phaserDepth    (p.apvts, ParamIDs::phaserDepth,    "DEPTH", &fxInfo),
-      phaserFeedback (p.apvts, ParamIDs::phaserFeedback, "FEEDBK",&fxInfo),
-      phaserMix      (p.apvts, ParamIDs::phaserMix,      "MIX",   &fxInfo),
-      compSidechain (std::make_unique<ToggleButton> (p.apvts, ParamIDs::compSidechain, "SC", &fxInfo)),
-      compThreshold (p.apvts, ParamIDs::compThreshold, "THRSH",  &fxInfo),
-      compRatio     (p.apvts, ParamIDs::compRatio,     "RATIO",  &fxInfo),
-      compAttack    (p.apvts, ParamIDs::compAttack,    "ATTACK", &fxInfo),
-      compRelease   (p.apvts, ParamIDs::compRelease,   "RELSE",  &fxInfo),
-      compKnee      (p.apvts, ParamIDs::compKnee,      "KNEE",   &fxInfo),
-      compMakeup    (p.apvts, ParamIDs::compMakeup,    "MAKEUP", &fxInfo),
-      compScAmount  (p.apvts, ParamIDs::compScAmount,  "SC AMT", &fxInfo),
+      phaserRate     (p.apvts, ParamIDs::phaserRate,     "RATE",  &fxInfoPhaser),
+      phaserDepth    (p.apvts, ParamIDs::phaserDepth,    "DEPTH", &fxInfoPhaser),
+      phaserFeedback (p.apvts, ParamIDs::phaserFeedback, "FEEDBK",&fxInfoPhaser),
+      phaserMix      (p.apvts, ParamIDs::phaserMix,      "MIX",   &fxInfoPhaser),
+      compSidechain (std::make_unique<ToggleButton> (p.apvts, ParamIDs::compSidechain, "SC", &fxInfoComp)),
+      compThreshold (p.apvts, ParamIDs::compThreshold, "THRSH",  &fxInfoComp),
+      compRatio     (p.apvts, ParamIDs::compRatio,     "RATIO",  &fxInfoComp),
+      compAttack    (p.apvts, ParamIDs::compAttack,    "ATTACK", &fxInfoComp),
+      compRelease   (p.apvts, ParamIDs::compRelease,   "RELSE",  &fxInfoComp),
+      compKnee      (p.apvts, ParamIDs::compKnee,      "KNEE",   &fxInfoComp),
+      compMakeup    (p.apvts, ParamIDs::compMakeup,    "MAKEUP", &fxInfoComp),
+      compScAmount  (p.apvts, ParamIDs::compScAmount,  "SC AMT", &fxInfoComp),
       keyboardComponent (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
     juce::ignoreUnused (processorRef, apvts);
@@ -987,7 +987,9 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
 
     for (auto* d : { &osc1Info, &osc2Info, &filterInfo,
                      &envInfo, &masterInfo,
-                     &lfoInfo, &modInfo, &fxInfo })
+                     &lfoInfo, &modInfo,
+                     &fxInfoDrive, &fxInfoChorus, &fxInfoPhaser, &fxInfoDelay,
+                     &fxInfoReverb, &fxInfoVintage, &fxInfoEq, &fxInfoComp })
         addAndMakeVisible (d);
 
     std::initializer_list<juce::Component*> allKnobs {
@@ -1045,7 +1047,7 @@ void PPGWave3Editor::setActiveEqBand (int band)
     eqHighBtn.setToggleState (activeEqBand == 3, juce::dontSendNotification);
 }
 
-// ==================== Menú de presets ====================
+// ==================== Preset menu ====================
 
 void PPGWave3Editor::showPresetMenu()
 {
@@ -1167,14 +1169,12 @@ void PPGWave3Editor::onToggleFavoritesOnly()
     favoritesOnlyBtn.setToggleState (newState, juce::dontSendNotification);
 }
 
-// ==================== FX Tab visibility ====================
+// ==================== FX/Env Tab visibility ====================
 
 void PPGWave3Editor::updateFxVisibility()
 {
-    // Todo siempre visible. No hay nada que ocultar.
+    // Todo visible siempre.
 }
-
-// ==================== Env Tab visibility ====================
 
 void PPGWave3Editor::updateEnvVisibility()
 {
@@ -1348,7 +1348,9 @@ void PPGWave3Editor::applyScaleToAll (float scaleValue)
 
     for (auto* d : { &osc1Info, &osc2Info, &filterInfo,
                      &envInfo, &masterInfo,
-                     &lfoInfo, &modInfo, &fxInfo })
+                     &lfoInfo, &modInfo,
+                     &fxInfoDrive, &fxInfoChorus, &fxInfoPhaser, &fxInfoDelay,
+                     &fxInfoReverb, &fxInfoVintage, &fxInfoEq, &fxInfoComp })
         d->setScale (scaleValue);
 
     for (auto* h : { &mod1Amt, &mod2Amt, &mod3Amt, &mod4Amt })
@@ -1457,8 +1459,6 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     }
 }
 
-// ==================== drawSection ====================
-
 void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                                   const juce::String& title) const
 {
@@ -1486,8 +1486,6 @@ void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                 juce::jmin (titleW, 200), 1);
 }
 
-// ==================== drawBox ====================
-
 void PPGWave3Editor::drawBox (juce::Graphics& g, juce::Rectangle<int> area) const
 {
     if (area.isEmpty()) return;
@@ -1501,8 +1499,6 @@ void PPGWave3Editor::drawBox (juce::Graphics& g, juce::Rectangle<int> area) cons
     g.setColour (juce::Colour (0xff2f2f2f));
     g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
 }
-
-// ==================== drawLogo ====================
 
 void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const
 {
@@ -1574,7 +1570,7 @@ void PPGWave3Editor::resized()
 
     auto r = getLocalBounds();
 
-    // ===== Header (42px) =====
+    // ===== Header =====
     auto header = r.removeFromTop (42);
     {
         auto h = header.reduced (8, 4);
@@ -1890,8 +1886,8 @@ void PPGWave3Editor::resized()
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
-        auto titleRow = inner.removeFromTop (16);
-        fxInfo.setBounds (titleRow.removeFromRight (180).reduced (0, 0));
+        // Fila superior: título EFFECTS arriba + hueco para que paint() lo dibuje
+        inner.removeFromTop (16);
         inner.removeFromTop (4);
 
         const int colGap = 4;
@@ -1915,13 +1911,17 @@ void PPGWave3Editor::resized()
         }
 
         const int headerH = 22;
+        const int infoH   = 16;
 
-        auto layoutColUniform = [&] (int idx, FxTab& tab,
-                                     std::initializer_list<juce::Component*> knobs)
+        // Helper: cabecera + InfoDisplay + knobs (distribuidos uniformemente)
+        auto layoutCol = [&] (int idx, FxTab& tab, InfoDisplay& info,
+                              std::initializer_list<juce::Component*> knobs)
         {
             auto col = fxColumnAreas[idx].reduced (6, 6);
             tab.setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (6);
+            col.removeFromTop (3);
+            info.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             const int n = (int) knobs.size();
             if (n == 0) return;
@@ -1932,14 +1932,21 @@ void PPGWave3Editor::resized()
                 arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
         };
 
-        layoutColUniform (0, *driveTab,  { &driveAmount, &driveTone, &driveMix });
-        layoutColUniform (1, *chorusTab, { &chorusRate, &chorusDepth, &chorusMix });
+        // ---- DIST ----
+        layoutCol (0, *driveTab, fxInfoDrive,
+                   { &driveAmount, &driveTone, &driveMix });
 
-        // PHASER: 2×2
+        // ---- CHORUS ----
+        layoutCol (1, *chorusTab, fxInfoChorus,
+                   { &chorusRate, &chorusDepth, &chorusMix });
+
+        // ---- PHASER (2×2) ----
         {
             auto col = fxColumnAreas[2].reduced (6, 6);
             phaserTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (6);
+            col.removeFromTop (3);
+            fxInfoPhaser.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             const int halfH = col.getHeight() / 2;
             auto row1 = col.removeFromTop (halfH);
@@ -1954,11 +1961,13 @@ void PPGWave3Editor::resized()
             phaserMix     .setBounds (row2.reduced (2, 2));
         }
 
-        // DELAY
+        // ---- DELAY ----
         {
             auto col = fxColumnAreas[3].reduced (6, 6);
             delayTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
             col.removeFromTop (3);
+            fxInfoDelay.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             delaySync->setBounds (col.removeFromTop (26));
             col.removeFromTop (6);
@@ -1974,13 +1983,17 @@ void PPGWave3Editor::resized()
                 arr[i]->setBounds (col.removeFromTop (h).reduced (2, 2));
         }
 
-        layoutColUniform (4, *reverbTab, { &reverbSize, &reverbDamp, &reverbMix });
+        // ---- REVERB ----
+        layoutCol (4, *reverbTab, fxInfoReverb,
+                   { &reverbSize, &reverbDamp, &reverbMix });
 
-        // VINTAGE
+        // ---- VINTAGE (2 sub-columnas) ----
         {
             auto col = fxColumnAreas[5].reduced (6, 6);
             vintageTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (6);
+            col.removeFromTop (3);
+            fxInfoVintage.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
@@ -2009,14 +2022,16 @@ void PPGWave3Editor::resized()
             }
         }
 
-        // EQ
+        // ---- EQ ----
         {
             auto col = fxColumnAreas[6].reduced (6, 6);
             eqTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (6);
+            col.removeFromTop (3);
+            fxInfoEq.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             const int bandRowH  = 20;
-            const int finalRowH = 20;
+            const int finalRowH = 65;   // ← HP/FREQ/Q/GAIN/LP más altos
             const int gap1      = 6;
             const int gap2      = 8;
 
@@ -2039,28 +2054,27 @@ void PPGWave3Editor::resized()
             const int elemGap = 4;
             const int elemW = (totalW - 4 * elemGap) / 5;
 
+            // HP / LP más pequeños (20px, centrados verticalmente)
             eqHpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 20));
-
             col.removeFromLeft (elemGap);
             eqFreqKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqQKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqGainKnob.setBounds (col.removeFromLeft (elemW));
-
             col.removeFromLeft (elemGap);
             eqLpOn->setBounds (col.removeFromLeft (elemW)
                                   .withSizeKeepingCentre (elemW - 4, 20));
         }
 
-        // COMP
+        // ---- COMP ----
         {
             auto col = fxColumnAreas[7].reduced (6, 6);
             compTab->setBounds (col.removeFromTop (headerH).reduced (0, 1));
-            col.removeFromTop (6);
+            col.removeFromTop (3);
+            fxInfoComp.setBounds (col.removeFromTop (infoH).reduced (0, 1));
+            col.removeFromTop (4);
 
             const int subGap = 4;
             const int subW = (col.getWidth() - subGap) / 2;
