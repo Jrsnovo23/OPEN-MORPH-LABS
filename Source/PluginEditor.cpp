@@ -23,17 +23,45 @@ void PPGWave3Editor::InfoDisplay::paint (juce::Graphics& g)
     auto textArea = getLocalBounds().reduced (juce::roundToInt (5.0f * scale), 1);
     g.setColour (juce::Colour (0xffffcc55));
     g.setFont (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(),
-                                  juce::jmax (7.0f, 9.5f * scale), juce::Font::plain));
+                                  juce::jmax (7.0f, 9.0f * scale), juce::Font::plain));
 
     if (paramValue.isEmpty())
     {
         g.drawText (paramName, textArea, juce::Justification::centredLeft);
+        return;
+    }
+
+    // Reparto dinámico:
+    //   - Calculamos el ancho natural del nombre y del valor.
+    //   - Si caben juntos (con 4px de gap), nombre a la izq + valor a la der.
+    //   - Si no caben, el valor se reserva completo a la derecha y el nombre se
+    //     comprime con elipsis a la izquierda. Así el número siempre es legible.
+
+    const auto font = g.getCurrentFont();
+    const int nameW  = (int) std::ceil (font.getStringWidthFloat (paramName))  + 2;
+    const int valueW = (int) std::ceil (font.getStringWidthFloat (paramValue)) + 2;
+    const int totalW = textArea.getWidth();
+    const int gapPx  = 4;
+
+    if (nameW + valueW + gapPx <= totalW)
+    {
+        // Todo cabe: nombre completo a la izq + valor completo a la der
+        g.drawText (paramName, textArea.removeFromLeft (nameW),
+                    juce::Justification::centredLeft);
+        g.drawText (paramValue, textArea,
+                    juce::Justification::centredRight);
     }
     else
     {
-        auto nameArea = textArea.removeFromLeft ((int) ((float) textArea.getWidth() * 0.55f));
-        g.drawText (paramName,  nameArea, juce::Justification::centredLeft);
-        g.drawText (paramValue, textArea, juce::Justification::centredRight);
+        // No cabe: el valor se reserva hasta el 65% del ancho
+        const int reserved = juce::jmin (valueW, (int) (totalW * 0.65f));
+        auto valueArea = textArea.removeFromRight (reserved);
+
+        // El nombre ocupa lo que queda con elipsis
+        g.drawFittedText (paramName, textArea,
+                          juce::Justification::centredLeft, 1, 0.9f);
+        g.drawText (paramValue, valueArea,
+                    juce::Justification::centredRight);
     }
 }
 
@@ -1770,9 +1798,9 @@ void PPGWave3Editor::resized()
 
         auto tabRow = inner.removeFromTop (20);
         const int tabW = tabRow.getWidth() / 3;
-        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 1));
-        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (1, 1));
-        env3TabBtn.setBounds (tabRow.reduced (1, 1));
+        env1TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (0, 1));
+        env2TabBtn.setBounds (tabRow.removeFromLeft (tabW).reduced (0, 1));
+        env3TabBtn.setBounds (tabRow.reduced (0, 1));
         inner.removeFromTop (3);
 
         auto knobRow = inner.removeFromBottom (62);
@@ -1873,7 +1901,7 @@ void PPGWave3Editor::resized()
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
-        const int colGap = 4;
+        const int colGap = 6;
         const int numCols = 8;
 
         const float units[8] = { 1.0f, 1.0f, 1.2f, 1.2f, 1.0f, 1.8f, 2.5f, 1.8f };
