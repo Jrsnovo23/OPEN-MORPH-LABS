@@ -189,7 +189,6 @@ private:
         bool isFactory = true;
     };
 
-    // ===== Tab de efecto con indicador ON/OFF integrado (SOLO CABECERA) =====
     class FxTab : public juce::Component
     {
     public:
@@ -209,6 +208,7 @@ private:
 
     void  drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                        const juce::String& title) const;
+    void  drawBox (juce::Graphics& g, juce::Rectangle<int> area) const;
     void  drawLogo (juce::Graphics& g, juce::Rectangle<int> area) const;
     float computeScale() const;
     void  applyScaleToAll (float s);
@@ -228,10 +228,12 @@ private:
     void  updateEnvVisibility();
     void  setActiveEqBand (int band);
 
-    // Utilidad de layout para el bloque FX en columnas
     void  layoutKnobStack (juce::Rectangle<int> col,
                            std::initializer_list<juce::Component*> knobs,
                            int itemHeight);
+    void  layoutKnobStackBottom (juce::Rectangle<int> col,
+                                 std::initializer_list<juce::Component*> knobs,
+                                 int itemHeight);
 
     PPGWave3Processor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
@@ -239,7 +241,6 @@ private:
 
     presets::PresetManager presetManager;
 
-    // === Preset bar ===
     juce::TextButton prevBtn, nextBtn;
     juce::TextButton favoriteBtn;
     juce::TextButton favoritesOnlyBtn;
@@ -268,7 +269,6 @@ private:
     juce::TextButton env1TabBtn, env2TabBtn, env3TabBtn;
     int activeEnvTab = 0;
 
-    // MASTER + 2 VU meters en el header
     RotaryKnob master;
     ui::HorizontalMeter masterHztMeter, compGrMeter;
 
@@ -287,31 +287,22 @@ private:
     std::unique_ptr<ComboBoxSelector> mod3Src, mod3Dst;  HSlider mod3Amt;
     std::unique_ptr<ComboBoxSelector> mod4Src, mod4Dst;  HSlider mod4Amt;
 
-    // FX — cabeceras (8) con toggle integrado
     std::unique_ptr<FxTab> driveTab, chorusTab, phaserTab;
     std::unique_ptr<FxTab> delayTab, reverbTab, vintageTab, eqTab, compTab;
 
-    // FX — Drive
     RotaryKnob driveAmount, driveTone, driveMix;
-    // FX — Chorus
     RotaryKnob chorusRate, chorusDepth, chorusMix;
-    // FX — Delay
     std::unique_ptr<ComboBoxSelector> delaySync;
     RotaryKnob delayTime, delayFeedback, delayMix;
-    // FX — Reverb
     RotaryKnob reverbSize, reverbDamp, reverbMix;
-    // FX — Vintage
     RotaryKnob vintageAmount, vintageBits, vintageSr;
     RotaryKnob vintageNoise, vintageDrift, vintageVar;
-    // FX — EQ
     std::unique_ptr<ToggleButton> eqHpOn, eqLpOn;
     juce::TextButton eqLowBtn, eqLmidBtn, eqHmidBtn, eqHighBtn;
     EQBandKnob eqFreqKnob, eqQKnob, eqGainKnob;
     EQCurveDisplay eqCurveDisplay;
     int activeEqBand = 0;
-    // FX — Phaser
     RotaryKnob phaserRate, phaserDepth, phaserFeedback, phaserMix;
-    // FX — Compressor
     std::unique_ptr<ToggleButton> compSidechain;
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
     RotaryKnob compKnee, compMakeup, compScAmount;
@@ -328,6 +319,7 @@ private:
     juce::Rectangle<int> fxArea;
     juce::Rectangle<int> headerLogoArea;
     juce::Rectangle<int> keyboardArea, wheelsArea;
+    juce::Rectangle<int> fxColumnAreas[8];
 
     float currentScale = 1.0f;
 
