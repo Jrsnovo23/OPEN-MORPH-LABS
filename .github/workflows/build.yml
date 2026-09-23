@@ -1,0 +1,43 @@
+name: Build PPG Wave 3 Clone
+
+# ==============================================================
+# COMPILACIÓN MANUAL — solo se ejecuta cuando tú la pidas.
+# Para activar la compilación automática al hacer push,
+# descomenta las 4 líneas del bloque "on: push" de abajo.
+# ==============================================================
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [ main, master ]
+  # pull_request:
+  #   branches: [ main, master ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone JUCE 8.0.8
+        run: git clone --depth 1 --branch 8.0.8 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Configure (Xcode, x86_64, deployment 11.0)
+        run: |
+          cmake -B build -G Xcode \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PPGWave3Clone-macOS-Intel
+          path: build/PPGWave3Clone_artefacts/Release/
