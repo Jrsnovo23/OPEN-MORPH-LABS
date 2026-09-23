@@ -189,7 +189,7 @@ private:
         bool isFactory = true;
     };
 
-    // ===== FASE 7.1c: tab de efecto con indicador ON/OFF integrado =====
+    // ===== Tab de efecto con indicador ON/OFF integrado (SOLO CABECERA) =====
     class FxTab : public juce::Component
     {
     public:
@@ -197,18 +197,11 @@ private:
                const juce::String& toggleParamId,
                const juce::String& label);
 
-        void setSelected (bool s);
-        bool isSelected() const { return selected; }
-
         void resized() override;
         void paint   (juce::Graphics&) override;
-        void mouseDown (const juce::MouseEvent&) override;
-
-        std::function<void()> onSelect;
 
     private:
         juce::String text;
-        bool selected = false;
 
         juce::TextButton toggleBtn;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
@@ -234,6 +227,11 @@ private:
     void  updateFxVisibility();
     void  updateEnvVisibility();
     void  setActiveEqBand (int band);
+
+    // Utilidad de layout para el bloque FX en columnas
+    void  layoutKnobStack (juce::Rectangle<int> col,
+                           std::initializer_list<juce::Component*> knobs,
+                           int itemHeight);
 
     PPGWave3Processor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
@@ -289,10 +287,9 @@ private:
     std::unique_ptr<ComboBoxSelector> mod3Src, mod3Dst;  HSlider mod3Amt;
     std::unique_ptr<ComboBoxSelector> mod4Src, mod4Dst;  HSlider mod4Amt;
 
-    // FX — tabs con indicador ON/OFF integrado
+    // FX — cabeceras (8) con toggle integrado
     std::unique_ptr<FxTab> driveTab, chorusTab, phaserTab;
     std::unique_ptr<FxTab> delayTab, reverbTab, vintageTab, eqTab, compTab;
-    int activeFxTab = 0;
 
     // FX — Drive
     RotaryKnob driveAmount, driveTone, driveMix;
