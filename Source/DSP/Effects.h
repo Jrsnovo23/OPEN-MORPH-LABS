@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_dsp/juce_dsp.h>
+#include <atomic>
 
 namespace dsp
 {
@@ -11,10 +12,7 @@ namespace dsp
         void prepare (double sampleRate, int maxBlockSize, int numChannels);
         void reset();
 
-        // FASE 11: process() acepta un sidechain opcional (bus de entrada).
-        // Si es nullptr o vacío, el compresor cae a self-sidechain.
-        void process (juce::AudioBuffer<float>& buffer,
-                      const juce::AudioBuffer<float>* sidechain = nullptr);
+        void process (juce::AudioBuffer<float>& buffer);
 
         void setChorus (bool on, float rate, float depth, float mix);
         void setDelay  (bool on, float timeSec, float feedback, float mix);
@@ -33,12 +31,14 @@ namespace dsp
                          float bits, float srFactor,
                          float noise);
 
-        // FASE 11
+        // FASE 11: compressor. grOutPtr recibe el gain reduction normalizado (0..1)
+        // para el VU meter. Puede ser nullptr.
         void setCompressor (bool on,
                             float thresholdDb, float ratio,
                             float attackMs, float releaseMs,
                             float kneeDb, float makeupDb,
-                            bool sidechainOn, float scAmount);
+                            bool sidechainOn, float scAmount,
+                            std::atomic<float>* grOutPtr = nullptr);
 
     private:
         double sr       = 44100.0;
@@ -109,7 +109,7 @@ namespace dsp
 
         juce::Random vintageRng;
 
-        // ---- FASE 11: Compressor ----
+        // ---- Compressor ----
         bool  compOn         = false;
         float compThreshold  = -12.0f;
         float compRatio      = 4.0f;
@@ -120,7 +120,8 @@ namespace dsp
         bool  compSidechain  = false;
         float compScAmount   = 1.0f;
 
-        // Envelope follower state
+        std::atomic<float>* compGrOut = nullptr;
+
         float  compEnvelope     = 0.0f;
         float  compAttackCoef   = 0.0f;
         float  compReleaseCoef  = 0.0f;
