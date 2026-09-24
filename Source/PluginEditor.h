@@ -40,7 +40,7 @@ private:
     private:
         juce::Slider  slider;
         juce::Label   label;         // nombre del parámetro
-        juce::Label   valueLabel;    // valor numérico (nuevo)
+        ValueBoxLabel valueLabel;    // valor numérico (nuevo)
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
@@ -142,7 +142,7 @@ private:
         juce::StringArray ids;
         juce::Slider  slider;
         juce::Label   label;
-        juce::Label   valueLabel;    // valor numérico (nuevo)
+        ValueBoxLabel valueLabel;    // valor numérico (nuevo)
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         int           activeBand = 0;
@@ -275,8 +275,8 @@ private:
     int activeEnvTab = 0;
 
     RotaryKnob master;
-    ui::HorizontalMeter masterHztMeter, compGrMeter;
-
+    ui::StereoHorizontalMeter masterHztMeter;
+    ui::HorizontalMeter       compGrMeter;
     std::unique_ptr<ComboBoxSelector> lfo1Wave;
     ui::LFODisplay lfo1Display;
     RotaryKnob lfo1Rate, lfo1Depth, lfo1Phase;
