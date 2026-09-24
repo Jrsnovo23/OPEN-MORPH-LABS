@@ -74,19 +74,24 @@ namespace synth
         filtAdsr.noteOn();
         env3.noteOn();
 
+        // Resetear los trackers de fase al iniciar nota
+        osc1PhaseTrack = 0.0f;
+        osc2PhaseTrack = 0.0f;
+        lfo1PhaseTrack = 0.0f;
+        lfo2PhaseTrack = 0.0f;
+
         juce::Random r;
         randomValue = r.nextFloat() * 2.0f - 1.0f;
 
-        // ===== FASE 8: Voice variation =====
         float varAmt = 0.0f;
         if (auto* p = apvts.getRawParameterValue (ParamIDs::vintageVar))
             varAmt = p->load();
 
         if (varAmt > 0.0f)
         {
-            voiceDetune       = (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 15.0f;    // ±15 cents
-            voiceFilterOffset = (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 0.25f;   // ±0.25 octavas
-            voiceLevelOffset  = 1.0f + (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 0.1f; // ±10%
+            voiceDetune       = (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 15.0f;
+            voiceFilterOffset = (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 0.25f;
+            voiceLevelOffset  = 1.0f + (vintageRandom.nextFloat() * 2.0f - 1.0f) * varAmt * 0.1f;
         }
         else
         {
@@ -147,7 +152,6 @@ namespace synth
             return def;
         };
 
-        // ---------- Envolventes ----------
         adsrParams.attack  = getF (ParamIDs::ampAttack,  0.005f);
         adsrParams.decay   = getF (ParamIDs::ampDecay,   0.100f);
         adsrParams.sustain = getF (ParamIDs::ampSustain, 0.700f);
@@ -166,13 +170,11 @@ namespace synth
         env3Params.release = getF (ParamIDs::env3Release, 0.300f);
         env3.setParameters (env3Params);
 
-        // ---------- Wavetables ----------
         const int w1 = getI (ParamIDs::osc1Wave, 0);
         const int w2 = getI (ParamIDs::osc2Wave, 2);
         if (w1 != currentWave1Idx) { wave1 = dsp::wavetables::makeByIndex (w1); currentWave1Idx = w1; }
         if (w2 != currentWave2Idx) { wave2 = dsp::wavetables::makeByIndex (w2); currentWave2Idx = w2; }
 
-        // ---------- Osciladores ----------
         const float basePos1 = getF (ParamIDs::osc1Pos,   0.0f);
         const float basePos2 = getF (ParamIDs::osc2Pos,   0.0f);
         const float lvl1     = getF (ParamIDs::osc1Level, 0.8f);
@@ -187,11 +189,11 @@ namespace synth
 
         const float bendSemis = pitchBendValue * 2.0f;
 
-        // ===== FASE 8: Vintage drift =====
         const float driftAmt = getF (ParamIDs::vintageDrift, 0.0f);
         const double sr     = getSampleRate();
         const float driftPhaseInc = (sr > 0.0) ? (float) (0.2 / sr) : 0.0f;
         const float twoPiF  = juce::MathConstants<float>::twoPi;
+        const float srF     = (float) sr;
 
         auto freqOf = [&] (int oct, float semis, float cents) noexcept
         {
@@ -199,7 +201,6 @@ namespace synth
             return currentFreq * std::pow (2.0f, st / 12.0f);
         };
 
-        // ---------- Filtro ----------
         const int   fType      = getI (ParamIDs::filterType,     0);
         const float baseCutoff = getF (ParamIDs::filterCutoff,   8000.0f);
         const float baseReso   = getF (ParamIDs::filterReso,     0.0f);
@@ -212,7 +213,6 @@ namespace synth
             * std::pow (2.0f, fKeyTrack * (currentMidiNote - 60.0f) / 12.0f)
             * std::pow (2.0f, voiceFilterOffset);
 
-        // ---------- LFOs ----------
         const double bpm = bpmSource ? bpmSource->load() : 120.0;
         const double beatSec = 60.0 / juce::jmax (1.0, bpm);
 
@@ -237,7 +237,6 @@ namespace synth
         const auto lfo1WaveEnum = (dsp::LFO::Wave) lfo1W;
         const auto lfo2WaveEnum = (dsp::LFO::Wave) lfo2W;
 
-        // ---------- Matriz ----------
         ModSlot mods[4];
         mods[0] = { getI (ParamIDs::mod1Source, 0), getI (ParamIDs::mod1Dest, 0),
                     getF (ParamIDs::mod1Amount, 0.0f) };
@@ -252,6 +251,7 @@ namespace synth
         auto* R = output.getNumChannels() > 1 ? output.getWritePointer (1, startSample) : nullptr;
 
         constexpr int updateInterval = 32;
+        constexpr int phaseUpdateInterval = 8;
 
         for (int i = 0; i < numSamples; ++i)
         {
@@ -259,7 +259,6 @@ namespace synth
             const float filtEnv  = filtAdsr.getNextSample();
             const float env3Val  = env3.getNextSample();
 
-            // ===== FASE 8: drift LFO (slow sine) =====
             float driftCents = 0.0f;
             if (driftAmt > 0.0f)
             {
@@ -323,7 +322,6 @@ namespace synth
                 }
             }
 
-            // Aplicar totalCents (drift + voiceDetune) a ambos osciladores.
             const float f1 = freqOf (oct1, sem1, fin1 + totalCents + modFine1)
                              * std::pow (2.0f, modPitch1 * 2.0f);
             const float f2 = freqOf (oct2, sem2, fin2 + totalCents + modFine2)
@@ -340,6 +338,21 @@ namespace synth
                 filter.setResonance (juce::jlimit (0.0f, 1.0f, baseReso + modReso));
             }
 
+            // ===== FASE 12: trackers de fase (cada 8 samples) =====
+            if ((i % phaseUpdateInterval) == 0)
+            {
+                const float dt = (float) phaseUpdateInterval / srF;
+                osc1PhaseTrack += f1 * dt;
+                osc2PhaseTrack += f2 * dt;
+                lfo1PhaseTrack += lfo1R * dt;
+                lfo2PhaseTrack += lfo2R * dt;
+
+                osc1PhaseTrack -= std::floor (osc1PhaseTrack);
+                osc2PhaseTrack -= std::floor (osc2PhaseTrack);
+                lfo1PhaseTrack -= std::floor (lfo1PhaseTrack);
+                lfo2PhaseTrack -= std::floor (lfo2PhaseTrack);
+            }
+
             const float s1 = osc1.getNextSample (wave1, f1, pos1);
             const float s2 = osc2.getNextSample (wave2, f2, pos2);
             float mix = s1 * lvl1 + s2 * lvl2;
@@ -351,6 +364,12 @@ namespace synth
             L[i] += mix;
             if (R) R[i] += mix;
         }
+
+        // Publicar las fases al final del bloque
+        if (osc1PhaseTarget) osc1PhaseTarget->store (osc1PhaseTrack);
+        if (osc2PhaseTarget) osc2PhaseTarget->store (osc2PhaseTrack);
+        if (lfo1PhaseTarget) lfo1PhaseTarget->store (lfo1PhaseTrack);
+        if (lfo2PhaseTarget) lfo2PhaseTarget->store (lfo2PhaseTrack);
 
         if (! adsr.isActive())
         {
