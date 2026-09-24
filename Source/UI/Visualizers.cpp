@@ -15,12 +15,22 @@ namespace ui
 
     void WavetablePreview::timerCallback()
     {
-        // Avanza la fase decorativa (un ciclo ≈ 1.7 s a 30 Hz)
-        animPhase += 0.019f;
-        if (animPhase >= 1.0f) animPhase -= 1.0f;
+        // FASE 12: si hay fase real disponible, la usamos.
+        // Si no, avanzamos decorativamente como en 7.3a.
+        if (phasePtr != nullptr)
+        {
+            float p = phasePtr->load();
+            p -= std::floor (p);
+            animPhase = p;
+        }
+        else
+        {
+            animPhase += 0.019f;
+            if (animPhase >= 1.0f) animPhase -= 1.0f;
+        }
 
         refreshIfNeeded();
-        repaint();   // siempre repintamos para animar el punto
+        repaint();
     }
 
     void WavetablePreview::refreshIfNeeded()
@@ -76,21 +86,18 @@ namespace ui
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
 
-        // --- Punto animado que recorre la onda ---
+        // Punto que sigue la fase (real o decorativa)
         {
             const float sample = cachedTable.getSample (animPhase, cachedPos);
             const float px = r.getX() + animPhase * w;
             const float py = r.getCentreY() - sample * (h * 0.42f);
 
-            // Halo exterior
             g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
             g.fillEllipse (px - 5.0f, py - 5.0f, 10.0f, 10.0f);
 
-            // Núcleo brillante
             g.setColour (juce::Colour (0xffffe08a));
             g.fillEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f);
 
-            // Borde dorado fino
             g.setColour (juce::Colour (0xffb07000));
             g.drawEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f, 0.7f);
         }
@@ -193,16 +200,25 @@ namespace ui
 
     void LFODisplay::timerCallback()
     {
-        // Avanza la fase decorativa
-        animPhase += 0.019f;
-        if (animPhase >= 1.0f) animPhase -= 1.0f;
+        // FASE 12: fase real si está disponible; si no, decorativa.
+        if (phasePtr != nullptr)
+        {
+            float p = phasePtr->load();
+            p -= std::floor (p);
+            animPhase = p;
+        }
+        else
+        {
+            animPhase += 0.019f;
+            if (animPhase >= 1.0f) animPhase -= 1.0f;
+        }
 
         int w = 0;
         if (auto* p = apvtsRef.getRawParameterValue (waveId))
             w = (int) p->load();
 
         cachedWave = w;
-        repaint();   // siempre repintamos para animar el punto
+        repaint();
     }
 
     void LFODisplay::paint (juce::Graphics& g)
@@ -261,13 +277,12 @@ namespace ui
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
 
-        // --- Punto animado que recorre la onda ---
+        // Punto que sigue la fase (real o decorativa)
         {
             const float sample = sampleAt (animPhase);
             const float px = r.getX() + animPhase * w;
             const float py = r.getCentreY() - sample * (h * 0.38f);
 
-            // Halo exterior (más discreto, el LFO display es pequeño)
             g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
             g.fillEllipse (px - 4.0f, py - 4.0f, 8.0f, 8.0f);
 
