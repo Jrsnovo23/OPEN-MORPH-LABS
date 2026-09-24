@@ -2,16 +2,14 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 // Look & Feel inspirado en el PPG Wave 3.3 original.
-// Se encarga del dibujo de knobs, sliders, botones y combos con
-// estética dark + acentos dorados.
 class PPGLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    // ---- Paleta PPG ----
-    static juce::Colour bgApp()        { return juce::Colour (0xff151515); }
-    static juce::Colour bgPanel()      { return juce::Colour (0xff1c1c1c); }
-    static juce::Colour bgPanelLight() { return juce::Colour (0xff242424); }
-    static juce::Colour borderSoft()   { return juce::Colour (0xff2f2f2f); }
+    // ---- Paleta PPG (más oscura) ----
+    static juce::Colour bgApp()        { return juce::Colour (0xff0a0a0a); }
+    static juce::Colour bgPanel()      { return juce::Colour (0xff141414); }
+    static juce::Colour bgPanelLight() { return juce::Colour (0xff1c1c1c); }
+    static juce::Colour borderSoft()   { return juce::Colour (0xff2a2a2a); }
     static juce::Colour accent()       { return juce::Colour (0xffffaa00); }
     static juce::Colour accentBright() { return juce::Colour (0xffffcc55); }
     static juce::Colour accentDim()    { return juce::Colour (0xff7a5200); }
@@ -43,8 +41,6 @@ public:
 
     juce::Font getComboBoxFont (juce::ComboBox&) override;
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
-
-    // FASE 6.6: fuente y alto de los menús desplegables (popup de ComboBox).
     juce::Font getPopupMenuFont() override;
     void getIdealPopupMenuItemSize (const juce::String& text, bool isSeparator,
                                     int standardMenuItemHeight,
