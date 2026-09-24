@@ -14,6 +14,7 @@ PPGWave3Processor::PPGWave3Processor()
     {
         auto* voice = new synth::SynthVoice (apvts);
         voice->setBpmSource (&currentBpm);
+        voice->setPhaseTargets (&osc1Phase, &osc2Phase, &lfo1Phase, &lfo2Phase);
         synth.addVoice (voice);
     }
 
@@ -22,8 +23,17 @@ PPGWave3Processor::PPGWave3Processor()
 
 void PPGWave3Processor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    currentSampleRate = sampleRate;
+
     synth.setCurrentPlaybackSampleRate (sampleRate);
     effects.prepare (sampleRate, samplesPerBlock, 2);
+
+    // Resetear el analizador de espectro
+    fft.reset();
+    fftFifoIndex.store (0);
+    std::fill (fftFifo.begin(), fftFifo.end(), 0.0f);
+    std::fill (fftBuffer.begin(), fftBuffer.end(), 0.0f);
+    for (auto& m : spectrumMagnitudes) m.store (-90.0f);
 }
 
 bool PPGWave3Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -165,6 +175,69 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                            &compressorGR);
 
     effects.process (buffer);
+
+    // ===== FASE 12: analizador de espectro (post-FX) =====
+    {
+        const int numSamples = buffer.getNumSamples();
+        const int numCh      = buffer.getNumChannels();
+        int fifoIdx = fftFifoIndex.load();
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float sample = 0.0f;
+            for (int ch = 0; ch < numCh; ++ch)
+                sample += buffer.getReadPointer (ch)[i];
+            if (numCh > 1) sample *= 0.5f;
+
+            fftFifo[(size_t) fifoIdx] = sample;
+            ++fifoIdx;
+
+            if (fifoIdx >= fftSize)
+            {
+                // Copiar al buffer de trabajo (deja la segunda mitad a 0)
+                std::copy (fftFifo.begin(), fftFifo.end(), fftBuffer.begin());
+                std::fill (fftBuffer.begin() + fftSize, fftBuffer.end(), 0.0f);
+
+                // Aplicar ventana Hann
+                window.multiplyWithWindowingTable (fftBuffer.data(), (size_t) fftSize);
+
+                // FFT
+                fft.performFrequencyOnlyForwardTransform (fftBuffer.data());
+
+                // Reducir a 128 bins logarítmicos (20 Hz a 20 kHz)
+                const float srF = (float) currentSampleRate;
+                const float freqMin = 20.0f;
+                const float freqMax = 20000.0f;
+
+                for (int b = 0; b < numSpectrumBins; ++b)
+                {
+                    const float t0 = (float) b       / (float) numSpectrumBins;
+                    const float t1 = (float) (b + 1) / (float) numSpectrumBins;
+                    const float f0 = freqMin * std::pow (freqMax / freqMin, t0);
+                    const float f1 = freqMin * std::pow (freqMax / freqMin, t1);
+
+                    int bin0 = juce::jlimit (0, fftBins - 1,
+                        (int) std::round (f0 / srF * (float) fftSize));
+                    int bin1 = juce::jlimit (0, fftBins - 1,
+                        (int) std::round (f1 / srF * (float) fftSize));
+                    if (bin1 < bin0) bin1 = bin0;
+
+                    float maxMag = 0.0f;
+                    for (int k = bin0; k <= bin1; ++k)
+                        maxMag = juce::jmax (maxMag, fftBuffer[(size_t) k]);
+
+                    // Normalización (fftSize/2) y a dB con suelo en -90
+                    const float normalized = maxMag / ((float) fftSize * 0.5f);
+                    const float db = juce::Decibels::gainToDecibels (normalized, -90.0f);
+
+                    spectrumMagnitudes[(size_t) b].store (db);
+                }
+
+                fifoIdx = 0;
+            }
+        }
+        fftFifoIndex.store (fifoIdx);
+    }
 
     {
         const float peakL = buffer.getNumChannels() > 0
