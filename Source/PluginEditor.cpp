@@ -131,41 +131,72 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
                                         InfoDisplay* display)
     : infoDisplay (display), paramName (labelText)
 {
+    // === Slider ===
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     slider.setColour (juce::Slider::rotarySliderFillColourId,    juce::Colour (0xffffaa00));
     slider.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff333333));
     slider.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffffcc55));
-
-    slider.onValueChange = [this]()
-    {
-        if (infoDisplay != nullptr)
-            infoDisplay->setInfo (paramName, slider.getTextFromValue (slider.getValue()));
-    };
-
     addAndMakeVisible (slider);
 
+    // === Label con el nombre del parámetro ===
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setColour (juce::Label::textColourId, juce::Colour (0xffcccccc));
     addAndMakeVisible (label);
 
+    // === Label con el valor numérico (nuevo) ===
+    valueLabel.setText ("--", juce::dontSendNotification);
+    valueLabel.setJustificationType (juce::Justification::centred);
+    valueLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffcc55));
+    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    addAndMakeVisible (valueLabel);
+
+    // === Cada vez que el slider cambia, actualizamos AMBOS:
+    //     - el valueLabel (local)
+    //     - el infoDisplay de la sección (si existe)
+    slider.onValueChange = [this]()
+    {
+        const auto text = slider.getTextFromValue (slider.getValue());
+        valueLabel.setText (text, juce::dontSendNotification);
+
+        if (infoDisplay != nullptr)
+            infoDisplay->setInfo (paramName, text);
+    };
+
+    // === Attachment ===
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         state, paramID, slider);
+
+    // Inicializar el valor al primer render
+    valueLabel.setText (slider.getTextFromValue (slider.getValue()),
+                        juce::dontSendNotification);
 }
 
 void PPGWave3Editor::RotaryKnob::setScale (float s)
 {
     scale = s;
-    label.setFont (juce::FontOptions (juce::jmax (7.0f, 9.0f * scale)));
+
+    const float baseFont = juce::jmax (6.5f, 8.5f * scale);
+    label.setFont      (juce::FontOptions (baseFont));
+    valueLabel.setFont (juce::FontOptions (baseFont));
+
     resized();
 }
 
 void PPGWave3Editor::RotaryKnob::resized()
 {
     auto r = getLocalBounds();
-    const int labelH = juce::jmax (9, juce::roundToInt (11.0f * scale));
+
+    const int labelH = juce::jmax (8, juce::roundToInt (10.0f * scale));
+
+    // Fila superior: nombre del parámetro
     label.setBounds (r.removeFromTop (labelH));
+
+    // Fila inferior: valor numérico
+    valueLabel.setBounds (r.removeFromBottom (labelH));
+
+    // Knob ocupa el resto
     slider.setBounds (r.reduced (2, 0));
 }
 
@@ -374,6 +405,12 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     label.setColour (juce::Label::textColourId, juce::Colour (0xffcccccc));
     addAndMakeVisible (label);
 
+    valueLabel.setText ("--", juce::dontSendNotification);
+    valueLabel.setJustificationType (juce::Justification::centred);
+    valueLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffcc55));
+    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    addAndMakeVisible (valueLabel);
+
     refreshSliderFromParam();
     startTimerHz (30);
 }
@@ -392,15 +429,22 @@ void PPGWave3Editor::EQBandKnob::setActiveBand (int band)
 void PPGWave3Editor::EQBandKnob::setScale (float s)
 {
     scale = s;
-    label.setFont (juce::FontOptions (juce::jmax (7.0f, 9.0f * scale)));
+
+    const float baseFont = juce::jmax (6.5f, 8.5f * scale);
+    label.setFont      (juce::FontOptions (baseFont));
+    valueLabel.setFont (juce::FontOptions (baseFont));
+
     resized();
 }
 
 void PPGWave3Editor::EQBandKnob::resized()
 {
     auto r = getLocalBounds();
-    const int labelH = juce::jmax (9, juce::roundToInt (11.0f * scale));
+
+    const int labelH = juce::jmax (8, juce::roundToInt (10.0f * scale));
+
     label.setBounds (r.removeFromTop (labelH));
+    valueLabel.setBounds (r.removeFromBottom (labelH));
     slider.setBounds (r.reduced (2, 0));
 }
 
@@ -433,13 +477,17 @@ void PPGWave3Editor::EQBandKnob::sliderChanged()
 
 void PPGWave3Editor::EQBandKnob::updateInfoText()
 {
-    if (infoDisplay == nullptr) return;
-
     const auto id = ids[activeBand];
     auto* param = apvtsRef.getParameter (id);
     if (param == nullptr) return;
 
-    infoDisplay->setInfo (paramName, param->getCurrentValueAsText());
+    const auto text = param->getCurrentValueAsText();
+
+    // Actualiza el valueLabel local y (si existe) el infoDisplay de sección
+    valueLabel.setText (text, juce::dontSendNotification);
+
+    if (infoDisplay != nullptr)
+        infoDisplay->setInfo (paramName, text);
 }
 
 void PPGWave3Editor::EQBandKnob::timerCallback()
