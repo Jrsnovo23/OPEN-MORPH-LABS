@@ -2,9 +2,7 @@
 
 namespace ui
 {
-    // ============================================================
-    // WavetablePreview
-    // ============================================================
+    // ============ WavetablePreview ============
     WavetablePreview::WavetablePreview (juce::AudioProcessorValueTreeState& apvts,
                                         const juce::String& waveParamID,
                                         const juce::String& posParamID)
@@ -13,15 +11,9 @@ namespace ui
         startTimerHz (30);
     }
 
-    WavetablePreview::~WavetablePreview()
-    {
-        stopTimer();
-    }
+    WavetablePreview::~WavetablePreview() { stopTimer(); }
 
-    void WavetablePreview::timerCallback()
-    {
-        refreshIfNeeded();
-    }
+    void WavetablePreview::timerCallback() { refreshIfNeeded(); }
 
     void WavetablePreview::refreshIfNeeded()
     {
@@ -34,28 +26,19 @@ namespace ui
             p = param->load();
 
         bool changed = false;
-
         if (w != cachedWave)
         {
             cachedTable = dsp::wavetables::makeByIndex (w);
             cachedWave  = w;
             changed = true;
         }
-
-        if (std::abs (p - cachedPos) > 0.001f)
-        {
-            cachedPos = p;
-            changed = true;
-        }
-
-        if (changed)
-            repaint();
+        if (std::abs (p - cachedPos) > 0.001f) { cachedPos = p; changed = true; }
+        if (changed) repaint();
     }
 
     void WavetablePreview::paint (juce::Graphics& g)
     {
-        if (cachedWave < 0)
-            refreshIfNeeded();
+        if (cachedWave < 0) refreshIfNeeded();
 
         auto r = getLocalBounds().toFloat();
         const float w = r.getWidth();
@@ -85,27 +68,19 @@ namespace ui
 
         g.setColour (juce::Colour (0xffffaa00).withAlpha (0.25f));
         g.strokePath (path, juce::PathStrokeType (3.0f));
-
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
     }
 
-    // ============================================================
-    // EnvelopeDisplay
-    // ============================================================
+    // ============ EnvelopeDisplay ============
     EnvelopeDisplay::EnvelopeDisplay (juce::AudioProcessorValueTreeState& apvts,
                                       const juce::String& aId, const juce::String& dId,
                                       const juce::String& sId, const juce::String& rId)
         : apvtsRef (apvts),
           attackId (aId), decayId (dId), sustainId (sId), releaseId (rId)
-    {
-        startTimerHz (30);
-    }
+    { startTimerHz (30); }
 
-    EnvelopeDisplay::~EnvelopeDisplay()
-    {
-        stopTimer();
-    }
+    EnvelopeDisplay::~EnvelopeDisplay() { stopTimer(); }
 
     void EnvelopeDisplay::timerCallback()
     {
@@ -184,20 +159,13 @@ namespace ui
             g.fillEllipse (pt.x - 2.0f, pt.y - 2.0f, 4.0f, 4.0f);
     }
 
-    // ============================================================
-    // LFODisplay
-    // ============================================================
+    // ============ LFODisplay ============
     LFODisplay::LFODisplay (juce::AudioProcessorValueTreeState& apvts,
                             const juce::String& waveParamID)
         : apvtsRef (apvts), waveId (waveParamID)
-    {
-        startTimerHz (30);
-    }
+    { startTimerHz (30); }
 
-    LFODisplay::~LFODisplay()
-    {
-        stopTimer();
-    }
+    LFODisplay::~LFODisplay() { stopTimer(); }
 
     void LFODisplay::timerCallback()
     {
@@ -205,11 +173,7 @@ namespace ui
         if (auto* p = apvtsRef.getRawParameterValue (waveId))
             w = (int) p->load();
 
-        if (w != cachedWave)
-        {
-            cachedWave = w;
-            repaint();
-        }
+        if (w != cachedWave) { cachedWave = w; repaint(); }
     }
 
     void LFODisplay::paint (juce::Graphics& g)
@@ -267,13 +231,9 @@ namespace ui
         g.strokePath (path, juce::PathStrokeType (1.4f));
     }
 
-    // ============================================================
-    // LevelMeter (vertical)
-    // ============================================================
+    // ============ LevelMeter (vertical) ============
     LevelMeter::LevelMeter (std::atomic<float>& levelSource) : level (levelSource)
-    {
-        startTimerHz (30);
-    }
+    { startTimerHz (30); }
 
     void LevelMeter::timerCallback()
     {
@@ -315,16 +275,12 @@ namespace ui
                                 r.getY() + 2.0f, r.getBottom() - 2.0f);
     }
 
-    // ============================================================
-    // HorizontalMeter (FASE 7.1a)
-    // ============================================================
+    // ============ HorizontalMeter (mono) ============
     HorizontalMeter::HorizontalMeter (std::atomic<float>& levelSource,
                                       const juce::String& labelText,
                                       bool gainReductionMode)
         : level (levelSource), label (labelText), grMode (gainReductionMode)
-    {
-        startTimerHz (30);
-    }
+    { startTimerHz (30); }
 
     void HorizontalMeter::timerCallback()
     {
@@ -338,7 +294,6 @@ namespace ui
     {
         auto r = getLocalBounds().toFloat();
 
-        // Fondo
         g.setColour (juce::Colour (0xff0a0a0a));
         g.fillRoundedRectangle (r, 2.0f);
         g.setColour (juce::Colour (0xff2f2f2f));
@@ -346,7 +301,6 @@ namespace ui
 
         auto bar = r.reduced (2.0f);
 
-        // Label a la izquierda (si hay)
         if (label.isNotEmpty())
         {
             const int labelW = 24;
@@ -369,14 +323,12 @@ namespace ui
             juce::Colour c;
             if (grMode)
             {
-                // GR: cuanto más reduce, más rojo. Verde -> amarillo -> rojo.
                 if (v < 0.5f)      c = juce::Colour (0xff2ecc40);
                 else if (v < 0.8f) c = juce::Colour (0xffffaa00);
                 else               c = juce::Colour (0xffff3b30);
             }
             else
             {
-                // Nivel: verde -> amarillo -> rojo (como el vertical)
                 if (v < 0.7f)      c = juce::Colour (0xff2ecc40);
                 else if (v < 0.9f) c = juce::Colour (0xffffaa00);
                 else               c = juce::Colour (0xffff3b30);
@@ -387,11 +339,88 @@ namespace ui
                                     filled, bar.getHeight(), 2.0f);
         }
 
-        // Marcas internas
         g.setColour (juce::Colour (0xff2f2f2f));
         const float marks[] = { 0.25f, 0.5f, 0.75f };
         for (float p : marks)
             g.drawVerticalLine ((int) (bar.getX() + bar.getWidth() * p),
                                 bar.getY() + 1.0f, bar.getBottom() - 1.0f);
+    }
+
+    // ============ StereoHorizontalMeter ============
+    StereoHorizontalMeter::StereoHorizontalMeter (std::atomic<float>& levelL_,
+                                                  std::atomic<float>& levelR_,
+                                                  const juce::String& labelText)
+        : levelL (levelL_), levelR (levelR_), label (labelText)
+    { startTimerHz (30); }
+
+    void StereoHorizontalMeter::timerCallback()
+    {
+        const float curL = levelL.load();
+        const float curR = levelR.load();
+
+        if (curL > smoothedL) smoothedL = curL;
+        else                  smoothedL = smoothedL * 0.85f + curL * 0.15f;
+
+        if (curR > smoothedR) smoothedR = curR;
+        else                  smoothedR = smoothedR * 0.85f + curR * 0.15f;
+
+        repaint();
+    }
+
+    void StereoHorizontalMeter::paint (juce::Graphics& g)
+    {
+        auto r = getLocalBounds().toFloat();
+
+        g.setColour (juce::Colour (0xff0a0a0a));
+        g.fillRoundedRectangle (r, 2.0f);
+        g.setColour (juce::Colour (0xff2f2f2f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 2.0f, 1.0f);
+
+        auto bar = r.reduced (2.0f);
+
+        if (label.isNotEmpty())
+        {
+            const int labelW = 20;
+            auto labelArea = bar.removeFromLeft ((float) labelW);
+
+            g.setColour (juce::Colour (0xff888888));
+            g.setFont (juce::FontOptions (juce::jmax (7.0f, bar.getHeight() * 0.38f),
+                                          juce::Font::bold));
+            g.drawText (label, labelArea, juce::Justification::centred);
+
+            bar.removeFromLeft (2.0f);
+        }
+
+        const float gap  = 1.0f;
+        const float barH = (bar.getHeight() - gap) * 0.5f;
+
+        auto barL = bar.removeFromTop (barH);
+        bar.removeFromTop (gap);
+        auto barR = bar;
+
+        auto drawBar = [&] (juce::Rectangle<float> area, float value)
+        {
+            const float v = juce::jlimit (0.0f, 1.0f, value);
+            if (v > 0.001f)
+            {
+                juce::Colour c;
+                if (v < 0.7f)      c = juce::Colour (0xff2ecc40);
+                else if (v < 0.9f) c = juce::Colour (0xffffaa00);
+                else               c = juce::Colour (0xffff3b30);
+
+                g.setColour (c);
+                g.fillRoundedRectangle (area.getX(), area.getY(),
+                                        area.getWidth() * v, area.getHeight(), 1.0f);
+            }
+        };
+
+        drawBar (barL, smoothedL);
+        drawBar (barR, smoothedR);
+
+        g.setColour (juce::Colour (0xff2f2f2f));
+        const float marks[] = { 0.25f, 0.5f, 0.75f };
+        for (float p : marks)
+            g.drawVerticalLine ((int) (bar.getX() + bar.getWidth() * p),
+                                bar.getY(), bar.getBottom());
     }
 }
