@@ -2,6 +2,26 @@
 
 namespace ui
 {
+    // ============ FASE 12: overlay sonar ============
+    void drawSonarOverlay (juce::Graphics& g,
+                           juce::Rectangle<float> area,
+                           float phase)
+    {
+        // Banda estrecha dorada al 15% alpha que recorre horizontalmente.
+        const float bandW = area.getWidth() * 0.18f;
+        const float cx = area.getX()
+                       + phase * (area.getWidth() + 2.0f * bandW) - bandW;
+
+        juce::ColourGradient grad (
+            juce::Colour (0x00000000), cx - bandW, 0.0f,
+            juce::Colour (0x00000000), cx + bandW, 0.0f,
+            false);
+        grad.addColour (0.5, juce::Colour (0x26ffcc55));  // 0x26 = 15% alpha
+
+        g.setGradientFill (grad);
+        g.fillRoundedRectangle (area, 2.0f);
+    }
+
     // ============ WavetablePreview ============
     WavetablePreview::WavetablePreview (juce::AudioProcessorValueTreeState& apvts,
                                         const juce::String& waveParamID,
@@ -15,8 +35,7 @@ namespace ui
 
     void WavetablePreview::timerCallback()
     {
-        // FASE 12: si hay fase real disponible, la usamos.
-        // Si no, avanzamos decorativamente como en 7.3a.
+        // Fase del punto: real si está disponible, decorativa si no
         if (phasePtr != nullptr)
         {
             float p = phasePtr->load();
@@ -28,6 +47,10 @@ namespace ui
             animPhase += 0.019f;
             if (animPhase >= 1.0f) animPhase -= 1.0f;
         }
+
+        // Fase del sonar (independiente, ~2.5 s por barrido)
+        sonarPhase += 0.0133f;
+        if (sonarPhase >= 1.0f) sonarPhase -= 1.0f;
 
         refreshIfNeeded();
         repaint();
@@ -81,26 +104,40 @@ namespace ui
             else        path.lineTo (x, y);
         }
 
-        g.setColour (juce::Colour (0xffffaa00).withAlpha (0.25f));
-        g.strokePath (path, juce::PathStrokeType (3.0f));
+        // Glow más marcado
+        g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
+        g.strokePath (path, juce::PathStrokeType (4.5f));
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
 
-        // Punto que sigue la fase (real o decorativa)
+        // Punto con estela (cometa)
         {
             const float sample = cachedTable.getSample (animPhase, cachedPos);
             const float px = r.getX() + animPhase * w;
             const float py = r.getCentreY() - sample * (h * 0.42f);
 
-            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
-            g.fillEllipse (px - 5.0f, py - 5.0f, 10.0f, 10.0f);
+            // Estela: gradiente radial dorado detrás del punto
+            juce::ColourGradient trail (
+                juce::Colour (0xccffcc55), px - 14.0f, py,
+                juce::Colour (0x00ffcc55), px + 2.0f,  py,
+                false);
+            g.setGradientFill (trail);
+            g.fillEllipse (px - 14.0f, py - 6.0f, 16.0f, 12.0f);
 
+            // Halo grande
+            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.35f));
+            g.fillEllipse (px - 6.0f, py - 6.0f, 12.0f, 12.0f);
+
+            // Núcleo
             g.setColour (juce::Colour (0xffffe08a));
             g.fillEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f);
 
             g.setColour (juce::Colour (0xffb07000));
             g.drawEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f, 0.7f);
         }
+
+        // Overlay sonar al final
+        drawSonarOverlay (g, r, sonarPhase);
     }
 
     // ============ EnvelopeDisplay ============
@@ -115,20 +152,18 @@ namespace ui
 
     void EnvelopeDisplay::timerCallback()
     {
+        // Sonar siempre avanza
+        sonarPhase += 0.0133f;
+        if (sonarPhase >= 1.0f) sonarPhase -= 1.0f;
+
         float a = 0, d = 0, s = 0, r = 0;
         if (auto* p = apvtsRef.getRawParameterValue (attackId))  a = p->load();
         if (auto* p = apvtsRef.getRawParameterValue (decayId))   d = p->load();
         if (auto* p = apvtsRef.getRawParameterValue (sustainId)) s = p->load();
         if (auto* p = apvtsRef.getRawParameterValue (releaseId)) r = p->load();
 
-        if (std::abs (a - cachedA) > 0.0001f ||
-            std::abs (d - cachedD) > 0.0001f ||
-            std::abs (s - cachedS) > 0.0001f ||
-            std::abs (r - cachedR) > 0.0001f)
-        {
-            cachedA = a; cachedD = d; cachedS = s; cachedR = r;
-            repaint();
-        }
+        cachedA = a; cachedD = d; cachedS = s; cachedR = r;
+        repaint();
     }
 
     void EnvelopeDisplay::paint (juce::Graphics& g)
@@ -188,6 +223,9 @@ namespace ui
         };
         for (const auto& pt : pts)
             g.fillEllipse (pt.x - 2.0f, pt.y - 2.0f, 4.0f, 4.0f);
+
+        // Overlay sonar al final
+        drawSonarOverlay (g, r, sonarPhase);
     }
 
     // ============ LFODisplay ============
@@ -200,7 +238,6 @@ namespace ui
 
     void LFODisplay::timerCallback()
     {
-        // FASE 12: fase real si está disponible; si no, decorativa.
         if (phasePtr != nullptr)
         {
             float p = phasePtr->load();
@@ -212,6 +249,9 @@ namespace ui
             animPhase += 0.019f;
             if (animPhase >= 1.0f) animPhase -= 1.0f;
         }
+
+        sonarPhase += 0.0133f;
+        if (sonarPhase >= 1.0f) sonarPhase -= 1.0f;
 
         int w = 0;
         if (auto* p = apvtsRef.getRawParameterValue (waveId))
@@ -272,19 +312,26 @@ namespace ui
             else        path.lineTo (x, y);
         }
 
-        g.setColour (juce::Colour (0xffffaa00).withAlpha (0.25f));
-        g.strokePath (path, juce::PathStrokeType (3.0f));
+        g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
+        g.strokePath (path, juce::PathStrokeType (4.0f));
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
 
-        // Punto que sigue la fase (real o decorativa)
+        // Punto con estela
         {
             const float sample = sampleAt (animPhase);
             const float px = r.getX() + animPhase * w;
             const float py = r.getCentreY() - sample * (h * 0.38f);
 
-            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
-            g.fillEllipse (px - 4.0f, py - 4.0f, 8.0f, 8.0f);
+            juce::ColourGradient trail (
+                juce::Colour (0xccffcc55), px - 12.0f, py,
+                juce::Colour (0x00ffcc55), px + 2.0f,  py,
+                false);
+            g.setGradientFill (trail);
+            g.fillEllipse (px - 12.0f, py - 5.0f, 14.0f, 10.0f);
+
+            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.35f));
+            g.fillEllipse (px - 5.0f, py - 5.0f, 10.0f, 10.0f);
 
             g.setColour (juce::Colour (0xffffe08a));
             g.fillEllipse (px - 1.8f, py - 1.8f, 3.6f, 3.6f);
@@ -292,6 +339,8 @@ namespace ui
             g.setColour (juce::Colour (0xffb07000));
             g.drawEllipse (px - 1.8f, py - 1.8f, 3.6f, 3.6f, 0.6f);
         }
+
+        drawSonarOverlay (g, r, sonarPhase);
     }
 
     // ============ LevelMeter (vertical) ============
