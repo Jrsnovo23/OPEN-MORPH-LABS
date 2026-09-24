@@ -150,7 +150,7 @@ private:
         float         scale = 1.0f;
     };
 
-            class EQCurveDisplay : public juce::Component,
+                class EQCurveDisplay : public juce::Component,
                            private juce::Timer
     {
     public:
@@ -176,6 +176,7 @@ private:
         Cache cached;
         bool  hasCached = false;
         float scale = 1.0f;
+        float sonarPhase = 0.0f;   // NUEVO
     };
 
     class PresetDisplay : public juce::Component
