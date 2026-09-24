@@ -167,10 +167,13 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     effects.process (buffer);
 
     {
-        float peak = 0.0f;
-        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-            peak = juce::jmax (peak, buffer.getMagnitude (ch, 0, buffer.getNumSamples()));
-        peakLevel.store (peak);
+        const float peakL = buffer.getNumChannels() > 0
+            ? buffer.getMagnitude (0, 0, buffer.getNumSamples()) : 0.0f;
+        const float peakR = buffer.getNumChannels() > 1
+            ? buffer.getMagnitude (1, 0, buffer.getNumSamples()) : peakL;
+
+        peakLevelL.store (peakL);
+        peakLevelR.store (peakR);
     }
 }
 
