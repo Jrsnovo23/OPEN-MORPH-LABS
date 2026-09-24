@@ -131,7 +131,6 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
                                         InfoDisplay* display)
     : infoDisplay (display), paramName (labelText)
 {
-    // === Slider ===
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     slider.setColour (juce::Slider::rotarySliderFillColourId,    juce::Colour (0xffffaa00));
@@ -139,7 +138,7 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     slider.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffffcc55));
     addAndMakeVisible (slider);
 
-    // === Label con el nombre del parámetro (pequeño, arriba) ===
+    // Nombre (sin caja, arriba del knob)
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setColour (juce::Label::textColourId, juce::Colour (0xffaaaaaa));
@@ -147,22 +146,16 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     label.setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
     addAndMakeVisible (label);
 
-    // === Value label con caja propia (fondo negro + borde amarillo) ===
+    // Valor con caja redondeada (abajo del knob)
     valueLabel.setText ("--", juce::dontSendNotification);
-    valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setColour (juce::Label::textColourId,       juce::Colour (0xffffcc55));
-    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0xee000000));
-    valueLabel.setColour (juce::Label::outlineColourId,    juce::Colour (0xffffaa00));
     addAndMakeVisible (valueLabel);
 
-    // === Sincronización slider <-> labels ===
     slider.onValueChange = [this]()
     {
-        const auto text = slider.getTextFromValue (slider.getValue());
-        valueLabel.setText (text, juce::dontSendNotification);
+        const float v = (float) slider.getValue();
+        valueLabel.setText (PPGLookAndFeel::formatValueShort (v),
+                            juce::dontSendNotification);
 
-        // El InfoDisplay de sección sólo muestra el NOMBRE del parámetro
-        // (sin valor numérico — ese ya está en el valueLabel).
         if (infoDisplay != nullptr)
             infoDisplay->setInfo (paramName, "");
     };
@@ -170,7 +163,8 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         state, paramID, slider);
 
-    valueLabel.setText (slider.getTextFromValue (slider.getValue()),
+    valueLabel.setText (PPGLookAndFeel::formatValueShort (
+                            (float) slider.getValue()),
                         juce::dontSendNotification);
 }
 
@@ -190,14 +184,15 @@ void PPGWave3Editor::RotaryKnob::resized()
     auto r = getLocalBounds();
 
     const int labelH = juce::jmax (8, juce::roundToInt (10.0f * scale));
+    const int valueH = juce::jmax (10, juce::roundToInt (12.0f * scale));
 
-    // Fila superior: nombre del parámetro
     label.setBounds (r.removeFromTop (labelH));
 
-    // Fila inferior: valor numérico
-    valueLabel.setBounds (r.removeFromBottom (labelH));
+    auto valueRow = r.removeFromBottom (valueH);
+    const int valueW = juce::jmin (valueRow.getWidth() - 6,
+                                   juce::roundToInt (46.0f * scale));
+    valueLabel.setBounds (valueRow.withSizeKeepingCentre (valueW, valueH));
 
-    // Knob ocupa el resto
     slider.setBounds (r.reduced (2, 0));
 }
 
@@ -401,7 +396,6 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     slider.onValueChange = [this]() { sliderChanged(); };
     addAndMakeVisible (slider);
 
-    // Label del nombre (arriba)
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setColour (juce::Label::textColourId, juce::Colour (0xffaaaaaa));
@@ -409,27 +403,11 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     label.setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
     addAndMakeVisible (label);
 
-    // Value label con caja propia
     valueLabel.setText ("--", juce::dontSendNotification);
-    valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setColour (juce::Label::textColourId,       juce::Colour (0xffffcc55));
-    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0xee000000));
-    valueLabel.setColour (juce::Label::outlineColourId,    juce::Colour (0xffffaa00));
     addAndMakeVisible (valueLabel);
 
     refreshSliderFromParam();
     startTimerHz (30);
-}
-
-PPGWave3Editor::EQBandKnob::~EQBandKnob()
-{
-    stopTimer();
-}
-
-void PPGWave3Editor::EQBandKnob::setActiveBand (int band)
-{
-    activeBand = juce::jlimit (0, 3, band);
-    refreshSliderFromParam();
 }
 
 void PPGWave3Editor::EQBandKnob::setScale (float s)
@@ -448,9 +426,15 @@ void PPGWave3Editor::EQBandKnob::resized()
     auto r = getLocalBounds();
 
     const int labelH = juce::jmax (8, juce::roundToInt (10.0f * scale));
+    const int valueH = juce::jmax (10, juce::roundToInt (12.0f * scale));
 
     label.setBounds (r.removeFromTop (labelH));
-    valueLabel.setBounds (r.removeFromBottom (labelH));
+
+    auto valueRow = r.removeFromBottom (valueH);
+    const int valueW = juce::jmin (valueRow.getWidth() - 6,
+                                   juce::roundToInt (46.0f * scale));
+    valueLabel.setBounds (valueRow.withSizeKeepingCentre (valueW, valueH));
+
     slider.setBounds (r.reduced (2, 0));
 }
 
@@ -487,11 +471,14 @@ void PPGWave3Editor::EQBandKnob::updateInfoText()
     auto* param = apvtsRef.getParameter (id);
     if (param == nullptr) return;
 
-    const auto text = param->getCurrentValueAsText();
+    // Formateamos el valor numérico real a 5 caracteres
+    float realValue = 0.0f;
+    if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param))
+        realValue = ranged->getNormalisableRange().convertFrom0to1 (param->getValue());
 
-    valueLabel.setText (text, juce::dontSendNotification);
+    valueLabel.setText (PPGLookAndFeel::formatValueShort (realValue),
+                        juce::dontSendNotification);
 
-    // El InfoDisplay de sección sólo muestra el NOMBRE (sin valor)
     if (infoDisplay != nullptr)
         infoDisplay->setInfo (paramName, "");
 }
@@ -816,7 +803,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
       env3S (p.apvts, ParamIDs::env3Sustain, "S", &envInfo),
       env3R (p.apvts, ParamIDs::env3Release, "R", &envInfo),
       master (p.apvts, ParamIDs::masterGain, "MASTER", &masterInfo),
-      masterHztMeter (p.peakLevel, "MST", false),
+      masterHztMeter (p.peakLevelL, p.peakLevelR, "MST"),
       compGrMeter    (p.compressorGR, "GR", true),
       lfo1Wave (std::make_unique<ComboBoxSelector> (p.apvts, ParamIDs::lfo1Wave, "WAVE", &lfoInfo)),
       lfo1Display (p.apvts, ParamIDs::lfo1Wave),
@@ -1573,18 +1560,10 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 {
     if (area.isEmpty()) return;
 
-    auto a = area;
-    auto topRow = a.removeFromTop (juce::roundToInt ((float) a.getHeight() * 0.6f));
-
-    const float omlSize = juce::jmax (14.0f, (float) a.getHeight() * 0.55f);
+    const float omlSize = juce::jmax (16.0f, (float) area.getHeight() * 0.85f);
     g.setFont (juce::Font (juce::FontOptions (omlSize, juce::Font::bold)));
     g.setColour (PPGLookAndFeel::accent());
-    g.drawText ("OML", topRow, juce::Justification::centredLeft, false);
-
-    const float subSize = juce::jmax (6.5f, (float) a.getHeight() * 0.32f);
-    g.setFont (juce::Font (juce::FontOptions (subSize, juce::Font::plain)));
-    g.setColour (PPGLookAndFeel::textDim());
-    g.drawText ("Open Morph Labs", a, juce::Justification::centredLeft, false);
+    g.drawText ("OML", area, juce::Justification::centredLeft, false);
 }
 
 // ==================== Helpers ====================
