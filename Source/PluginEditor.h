@@ -150,11 +150,11 @@ private:
         float         scale = 1.0f;
     };
 
-    class EQCurveDisplay : public juce::Component,
+            class EQCurveDisplay : public juce::Component,
                            private juce::Timer
     {
     public:
-        explicit EQCurveDisplay (juce::AudioProcessorValueTreeState& apvts);
+        explicit EQCurveDisplay (PPGWave3Processor& processor);
         ~EQCurveDisplay() override;
         void paint (juce::Graphics&) override;
     private:
@@ -171,6 +171,7 @@ private:
         Cache readParams() const;
         static bool cacheChanged (const Cache& a, const Cache& b);
 
+        PPGWave3Processor& processorRef;
         juce::AudioProcessorValueTreeState& apvtsRef;
         Cache cached;
         bool  hasCached = false;
