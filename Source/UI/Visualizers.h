@@ -14,6 +14,11 @@ namespace ui
                           const juce::String& posParamID);
         ~WavetablePreview() override;
         void paint (juce::Graphics&) override;
+
+        // FASE 12: si se setea, la animación sigue la fase real del motor.
+        // Si es nullptr, cae al modo decorativo (7.3a).
+        void setPhaseSource (std::atomic<float>* phaseSource) { phasePtr = phaseSource; }
+
     private:
         void timerCallback() override;
         void refreshIfNeeded();
@@ -23,7 +28,9 @@ namespace ui
         int   cachedWave = -1;
         float cachedPos  = -1.0f;
         dsp::Wavetable cachedTable;
-        float animPhase  = 0.0f;   // NUEVO: fase decorativa 0..1
+        float animPhase  = 0.0f;
+
+        std::atomic<float>* phasePtr = nullptr;   // NUEVO
     };
 
     class EnvelopeDisplay : public juce::Component,
@@ -52,13 +59,18 @@ namespace ui
                     const juce::String& waveParamID);
         ~LFODisplay() override;
         void paint (juce::Graphics&) override;
+
+        void setPhaseSource (std::atomic<float>* phaseSource) { phasePtr = phaseSource; }
+
     private:
         void timerCallback() override;
 
         juce::AudioProcessorValueTreeState& apvtsRef;
         juce::String waveId;
         int cachedWave = -1;
-        float animPhase = 0.0f;   // NUEVO: fase decorativa 0..1
+        float animPhase = 0.0f;
+
+        std::atomic<float>* phasePtr = nullptr;   // NUEVO
     };
 
     class LevelMeter : public juce::Component, private juce::Timer
