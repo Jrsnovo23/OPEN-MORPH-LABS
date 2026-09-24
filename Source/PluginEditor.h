@@ -39,7 +39,8 @@ private:
         void setScale (float s);
     private:
         juce::Slider  slider;
-        juce::Label   label;
+        juce::Label   label;         // nombre del parámetro
+        juce::Label   valueLabel;    // valor numérico (nuevo)
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
@@ -141,6 +142,7 @@ private:
         juce::StringArray ids;
         juce::Slider  slider;
         juce::Label   label;
+        juce::Label   valueLabel;    // valor numérico (nuevo)
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         int           activeBand = 0;
@@ -248,12 +250,10 @@ private:
     PresetDisplay    presetDisplay;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
-    // === InfoDisplays principales ===
     InfoDisplay osc1Info, osc2Info, filterInfo;
     InfoDisplay envInfo, masterInfo;
     InfoDisplay lfoInfo, modInfo;
 
-    // === InfoDisplays individuales por columna FX (8) ===
     InfoDisplay fxInfoDrive, fxInfoChorus, fxInfoPhaser, fxInfoDelay;
     InfoDisplay fxInfoReverb, fxInfoVintage, fxInfoEq, fxInfoComp;
 
