@@ -139,36 +139,37 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     slider.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffffcc55));
     addAndMakeVisible (slider);
 
-    // === Label con el nombre del parámetro ===
+    // === Label con el nombre del parámetro (pequeño, arriba) ===
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
-    label.setColour (juce::Label::textColourId, juce::Colour (0xffcccccc));
+    label.setColour (juce::Label::textColourId, juce::Colour (0xffaaaaaa));
+    label.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    label.setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
     addAndMakeVisible (label);
 
-    // === Label con el valor numérico (nuevo) ===
+    // === Value label con caja propia (fondo negro + borde amarillo) ===
     valueLabel.setText ("--", juce::dontSendNotification);
     valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffcc55));
-    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    valueLabel.setColour (juce::Label::textColourId,       juce::Colour (0xffffcc55));
+    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0xee000000));
+    valueLabel.setColour (juce::Label::outlineColourId,    juce::Colour (0xffffaa00));
     addAndMakeVisible (valueLabel);
 
-    // === Cada vez que el slider cambia, actualizamos AMBOS:
-    //     - el valueLabel (local)
-    //     - el infoDisplay de la sección (si existe)
+    // === Sincronización slider <-> labels ===
     slider.onValueChange = [this]()
     {
         const auto text = slider.getTextFromValue (slider.getValue());
         valueLabel.setText (text, juce::dontSendNotification);
 
+        // El InfoDisplay de sección sólo muestra el NOMBRE del parámetro
+        // (sin valor numérico — ese ya está en el valueLabel).
         if (infoDisplay != nullptr)
-            infoDisplay->setInfo (paramName, text);
+            infoDisplay->setInfo (paramName, "");
     };
 
-    // === Attachment ===
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         state, paramID, slider);
 
-    // Inicializar el valor al primer render
     valueLabel.setText (slider.getTextFromValue (slider.getValue()),
                         juce::dontSendNotification);
 }
@@ -400,15 +401,20 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     slider.onValueChange = [this]() { sliderChanged(); };
     addAndMakeVisible (slider);
 
+    // Label del nombre (arriba)
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
-    label.setColour (juce::Label::textColourId, juce::Colour (0xffcccccc));
+    label.setColour (juce::Label::textColourId, juce::Colour (0xffaaaaaa));
+    label.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    label.setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
     addAndMakeVisible (label);
 
+    // Value label con caja propia
     valueLabel.setText ("--", juce::dontSendNotification);
     valueLabel.setJustificationType (juce::Justification::centred);
-    valueLabel.setColour (juce::Label::textColourId, juce::Colour (0xffffcc55));
-    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    valueLabel.setColour (juce::Label::textColourId,       juce::Colour (0xffffcc55));
+    valueLabel.setColour (juce::Label::backgroundColourId, juce::Colour (0xee000000));
+    valueLabel.setColour (juce::Label::outlineColourId,    juce::Colour (0xffffaa00));
     addAndMakeVisible (valueLabel);
 
     refreshSliderFromParam();
@@ -483,11 +489,11 @@ void PPGWave3Editor::EQBandKnob::updateInfoText()
 
     const auto text = param->getCurrentValueAsText();
 
-    // Actualiza el valueLabel local y (si existe) el infoDisplay de sección
     valueLabel.setText (text, juce::dontSendNotification);
 
+    // El InfoDisplay de sección sólo muestra el NOMBRE (sin valor)
     if (infoDisplay != nullptr)
-        infoDisplay->setInfo (paramName, text);
+        infoDisplay->setInfo (paramName, "");
 }
 
 void PPGWave3Editor::EQBandKnob::timerCallback()
