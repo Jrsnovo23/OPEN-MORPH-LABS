@@ -12,7 +12,7 @@ PPGLookAndFeel::PPGLookAndFeel()
     setColour (juce::TextEditor::highlightColourId, accent().withAlpha (0.4f));
 }
 
-// ============ ROTARY KNOB ============
+// ============ ROTARY KNOB (mejorado con relieve) ============
 void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                        int x, int y, int width, int height,
                                        float sliderPos,
@@ -33,48 +33,143 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const juce::Colour fillColour   = enabled ? accent()       : juce::Colour (0xff333333);
     const juce::Colour pointerColour = enabled ? accentBright() : juce::Colour (0xff555555);
 
-    juce::Path track;
-    track.addCentredArc (centre.x, centre.y,
-                         radius - trackThickness * 0.5f,
-                         radius - trackThickness * 0.5f,
-                         0.0f, rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (juce::Colour (0xff2a2a2a));
-    g.strokePath (track, juce::PathStrokeType (trackThickness,
-                                               juce::PathStrokeType::curved,
-                                               juce::PathStrokeType::rounded));
+    // === 0. SOMBRA EXTERIOR ===
+    // Un anillo oscuro exterior muy sutil para dar profundidad.
+    {
+        const auto outerR = radius + 1.0f;
+        g.setColour (juce::Colour (0x66000000));
+        g.fillEllipse (centre.x - outerR, centre.y - outerR + 0.7f,
+                       outerR * 2.0f, outerR * 2.0f);
+    }
 
-    juce::Path fill;
-    fill.addCentredArc (centre.x, centre.y,
-                        radius - trackThickness * 0.5f,
-                        radius - trackThickness * 0.5f,
-                        0.0f, rotaryStartAngle, angle, true);
-    g.setColour (fillColour);
-    g.strokePath (fill, juce::PathStrokeType (trackThickness,
-                                              juce::PathStrokeType::curved,
-                                              juce::PathStrokeType::rounded));
+    // === 1. TRACK (fondo oscuro del arco) ===
+    {
+        juce::Path track;
+        track.addCentredArc (centre.x, centre.y,
+                             radius - trackThickness * 0.5f,
+                             radius - trackThickness * 0.5f,
+                             0.0f, rotaryStartAngle, rotaryEndAngle, true);
 
+        // Track en dos capas: la de abajo más oscura (sombra interna del track),
+        // la de arriba más clara (relieve)
+        g.setColour (juce::Colour (0xff1a1a1a));
+        g.strokePath (track, juce::PathStrokeType (trackThickness + 1.5f,
+                                                   juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
+
+        g.setColour (juce::Colour (0xff2a2a2a));
+        g.strokePath (track, juce::PathStrokeType (trackThickness,
+                                                   juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
+    }
+
+    // === 2. FILL (arco dorado hasta la posición actual, con leve glow) ===
+    {
+        juce::Path fill;
+        fill.addCentredArc (centre.x, centre.y,
+                            radius - trackThickness * 0.5f,
+                            radius - trackThickness * 0.5f,
+                            0.0f, rotaryStartAngle, angle, true);
+
+        // Glow exterior
+        if (enabled)
+        {
+            g.setColour (fillColour.withAlpha (0.25f));
+            g.strokePath (fill, juce::PathStrokeType (trackThickness + 2.5f,
+                                                      juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded));
+        }
+
+        // Fill principal
+        g.setColour (fillColour);
+        g.strokePath (fill, juce::PathStrokeType (trackThickness,
+                                                  juce::PathStrokeType::curved,
+                                                  juce::PathStrokeType::rounded));
+    }
+
+    // === 3. CUERPO DEL KNOB (círculo interior con gradiente radial) ===
     const auto innerRadius = radius - trackThickness - 2.0f;
     if (innerRadius > 1.0f)
     {
-        g.setColour (juce::Colour (0xff0e0e0e));
-        g.fillEllipse (centre.x - innerRadius, centre.y - innerRadius,
-                       innerRadius * 2.0f, innerRadius * 2.0f);
+        const auto bodyRect = juce::Rectangle<float> (
+            centre.x - innerRadius, centre.y - innerRadius,
+            innerRadius * 2.0f, innerRadius * 2.0f);
 
-        g.setColour (juce::Colour (0xff2a2a2a));
-        g.drawEllipse (centre.x - innerRadius, centre.y - innerRadius,
-                       innerRadius * 2.0f, innerRadius * 2.0f, 1.0f);
+        // 3a. Gradiente radial: más claro en el centro-arriba, más oscuro en el borde
+        {
+            juce::ColourGradient bodyGrad (
+                juce::Colour (0xff1e1e1e),
+                centre.x, centre.y - innerRadius * 0.35f,
+                juce::Colour (0xff050505),
+                centre.x, centre.y + innerRadius,
+                true);   // radial
+
+            g.setGradientFill (bodyGrad);
+            g.fillEllipse (bodyRect);
+        }
+
+        // 3b. Borde exterior del cuerpo (leve relieve)
+        g.setColour (juce::Colour (0xff3a3a3a));
+        g.drawEllipse (bodyRect.reduced (0.5f), 1.0f);
+
+        // 3c. Highlight superior (simula luz desde arriba)
+        {
+            juce::Path highlight;
+            const float hR = innerRadius * 0.85f;
+            const float hCy = centre.y - innerRadius * 0.30f;
+            highlight.addCentredArc (centre.x, hCy, hR, hR * 0.55f,
+                                     0.0f,
+                                     juce::MathConstants<float>::pi * 1.15f,
+                                     juce::MathConstants<float>::pi * 1.85f,
+                                     true);
+            g.setColour (juce::Colour (0x33ffffff));
+            g.strokePath (highlight, juce::PathStrokeType (juce::jmax (1.0f, innerRadius * 0.08f),
+                                                           juce::PathStrokeType::curved,
+                                                           juce::PathStrokeType::rounded));
+        }
+
+        // 3d. Sombra interior inferior (leve)
+        {
+            juce::Path innerShadow;
+            const float sR = innerRadius * 0.92f;
+            const float sCy = centre.y + innerRadius * 0.35f;
+            innerShadow.addCentredArc (centre.x, sCy, sR, sR * 0.5f,
+                                       0.0f,
+                                       juce::MathConstants<float>::pi * 0.15f,
+                                       juce::MathConstants<float>::pi * 0.85f,
+                                       true);
+            g.setColour (juce::Colour (0x55000000));
+            g.strokePath (innerShadow, juce::PathStrokeType (juce::jmax (1.0f, innerRadius * 0.12f),
+                                                             juce::PathStrokeType::curved,
+                                                             juce::PathStrokeType::rounded));
+        }
     }
 
-    const float pointerLength = innerRadius * 0.85f;
-    juce::Path pointer;
-    pointer.startNewSubPath (0.0f, -innerRadius * 0.30f);
-    pointer.lineTo           (0.0f, -innerRadius * 0.30f - pointerLength);
-    g.setColour (pointerColour);
-    g.strokePath (pointer,
-                  juce::PathStrokeType (pointerThickness,
-                                        juce::PathStrokeType::curved,
-                                        juce::PathStrokeType::rounded),
-                  juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
+    // === 4. PUNTERO (línea dorada desde el centro hacia el borde) ===
+    {
+        const float pointerLength = innerRadius * 0.85f;
+        juce::Path pointer;
+        pointer.startNewSubPath (0.0f, -innerRadius * 0.30f);
+        pointer.lineTo           (0.0f, -innerRadius * 0.30f - pointerLength);
+
+        // Glow del puntero
+        if (enabled)
+        {
+            g.setColour (pointerColour.withAlpha (0.35f));
+            g.strokePath (pointer,
+                          juce::PathStrokeType (pointerThickness + 2.0f,
+                                                juce::PathStrokeType::curved,
+                                                juce::PathStrokeType::rounded),
+                          juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
+        }
+
+        g.setColour (pointerColour);
+        g.strokePath (pointer,
+                      juce::PathStrokeType (pointerThickness,
+                                            juce::PathStrokeType::curved,
+                                            juce::PathStrokeType::rounded),
+                      juce::AffineTransform::rotation (angle).translated (centre.x, centre.y));
+    }
 }
 
 // ============ LINEAR SLIDER ============
@@ -189,7 +284,6 @@ void PPGLookAndFeel::drawButtonText (juce::Graphics& g,
     const auto bounds = button.getLocalBounds();
     const bool isOn   = button.getToggleState();
 
-    // Tope: nunca más de 11.5px de fuente aunque el botón sea alto.
     const float fontSize = juce::jlimit (8.0f, 11.5f,
                                          (float) bounds.getHeight() * 0.55f);
 
