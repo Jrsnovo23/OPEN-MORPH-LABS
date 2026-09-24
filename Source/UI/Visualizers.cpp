@@ -13,7 +13,15 @@ namespace ui
 
     WavetablePreview::~WavetablePreview() { stopTimer(); }
 
-    void WavetablePreview::timerCallback() { refreshIfNeeded(); }
+    void WavetablePreview::timerCallback()
+    {
+        // Avanza la fase decorativa (un ciclo ≈ 1.7 s a 30 Hz)
+        animPhase += 0.019f;
+        if (animPhase >= 1.0f) animPhase -= 1.0f;
+
+        refreshIfNeeded();
+        repaint();   // siempre repintamos para animar el punto
+    }
 
     void WavetablePreview::refreshIfNeeded()
     {
@@ -25,15 +33,12 @@ namespace ui
         if (auto* param = apvtsRef.getRawParameterValue (posId))
             p = param->load();
 
-        bool changed = false;
         if (w != cachedWave)
         {
             cachedTable = dsp::wavetables::makeByIndex (w);
             cachedWave  = w;
-            changed = true;
         }
-        if (std::abs (p - cachedPos) > 0.001f) { cachedPos = p; changed = true; }
-        if (changed) repaint();
+        if (std::abs (p - cachedPos) > 0.001f) { cachedPos = p; }
     }
 
     void WavetablePreview::paint (juce::Graphics& g)
@@ -70,6 +75,25 @@ namespace ui
         g.strokePath (path, juce::PathStrokeType (3.0f));
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
+
+        // --- Punto animado que recorre la onda ---
+        {
+            const float sample = cachedTable.getSample (animPhase, cachedPos);
+            const float px = r.getX() + animPhase * w;
+            const float py = r.getCentreY() - sample * (h * 0.42f);
+
+            // Halo exterior
+            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
+            g.fillEllipse (px - 5.0f, py - 5.0f, 10.0f, 10.0f);
+
+            // Núcleo brillante
+            g.setColour (juce::Colour (0xffffe08a));
+            g.fillEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f);
+
+            // Borde dorado fino
+            g.setColour (juce::Colour (0xffb07000));
+            g.drawEllipse (px - 2.2f, py - 2.2f, 4.4f, 4.4f, 0.7f);
+        }
     }
 
     // ============ EnvelopeDisplay ============
@@ -169,11 +193,16 @@ namespace ui
 
     void LFODisplay::timerCallback()
     {
+        // Avanza la fase decorativa
+        animPhase += 0.019f;
+        if (animPhase >= 1.0f) animPhase -= 1.0f;
+
         int w = 0;
         if (auto* p = apvtsRef.getRawParameterValue (waveId))
             w = (int) p->load();
 
-        if (w != cachedWave) { cachedWave = w; repaint(); }
+        cachedWave = w;
+        repaint();   // siempre repintamos para animar el punto
     }
 
     void LFODisplay::paint (juce::Graphics& g)
@@ -199,26 +228,28 @@ namespace ui
                 waveIdx = 0;
         }
 
+        auto sampleAt = [waveIdx] (float phase) -> float
+        {
+            switch (waveIdx)
+            {
+                case 0:  return std::sin (phase * juce::MathConstants<float>::twoPi);
+                case 1:  return 4.0f * std::abs (phase - 0.5f) - 1.0f;
+                case 2:  return (phase < 0.5f) ? 1.0f : -1.0f;
+                case 3:  return 2.0f * phase - 1.0f;
+                case 4:  return 1.0f - 2.0f * phase;
+                case 5:  return std::sin (phase * juce::MathConstants<float>::twoPi * 3.0f)
+                              * std::sin (phase * juce::MathConstants<float>::pi);
+                case 6:  return (phase < 0.33f) ? 0.7f : (phase < 0.66f ? -0.4f : 0.2f);
+                default: return 0.0f;
+            }
+        };
+
         constexpr int N = 96;
         juce::Path path;
         for (int i = 0; i < N; ++i)
         {
             const float phase = (float) i / (float) (N - 1);
-            float sample = 0.0f;
-
-            switch (waveIdx)
-            {
-                case 0:  sample = std::sin (phase * juce::MathConstants<float>::twoPi); break;
-                case 1:  sample = 4.0f * std::abs (phase - 0.5f) - 1.0f;                break;
-                case 2:  sample = (phase < 0.5f) ? 1.0f : -1.0f;                        break;
-                case 3:  sample = 2.0f * phase - 1.0f;                                  break;
-                case 4:  sample = 1.0f - 2.0f * phase;                                  break;
-                case 5:  sample = std::sin (phase * juce::MathConstants<float>::twoPi * 3.0f)
-                                * std::sin (phase * juce::MathConstants<float>::pi);    break;
-                case 6:  sample = (phase < 0.33f) ? 0.7f : (phase < 0.66f ? -0.4f : 0.2f); break;
-                default: sample = 0.0f; break;
-            }
-
+            const float sample = sampleAt (phase);
             const float x = r.getX() + phase * w;
             const float y = r.getCentreY() - sample * (h * 0.38f);
             if (i == 0) path.startNewSubPath (x, y);
@@ -229,6 +260,23 @@ namespace ui
         g.strokePath (path, juce::PathStrokeType (3.0f));
         g.setColour (juce::Colour (0xffffcc55));
         g.strokePath (path, juce::PathStrokeType (1.4f));
+
+        // --- Punto animado que recorre la onda ---
+        {
+            const float sample = sampleAt (animPhase);
+            const float px = r.getX() + animPhase * w;
+            const float py = r.getCentreY() - sample * (h * 0.38f);
+
+            // Halo exterior (más discreto, el LFO display es pequeño)
+            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.30f));
+            g.fillEllipse (px - 4.0f, py - 4.0f, 8.0f, 8.0f);
+
+            g.setColour (juce::Colour (0xffffe08a));
+            g.fillEllipse (px - 1.8f, py - 1.8f, 3.6f, 3.6f);
+
+            g.setColour (juce::Colour (0xffb07000));
+            g.drawEllipse (px - 1.8f, py - 1.8f, 3.6f, 3.6f, 0.6f);
+        }
     }
 
     // ============ LevelMeter (vertical) ============
@@ -391,7 +439,6 @@ namespace ui
             bar.removeFromLeft (3.0f);
         }
 
-        // *** FIX: guardamos el área completa (L + R) ANTES de partirla en dos barras ***
         const auto marksArea = bar;
 
         const float gap  = 1.5f;
@@ -420,7 +467,6 @@ namespace ui
         drawBar (barL, smoothedL);
         drawBar (barR, smoothedR);
 
-        // *** FIX: las marcas cubren ahora los dos canales (L y R) ***
         g.setColour (juce::Colour (0x88ffffff));
         const float marks[] = { 0.25f, 0.5f, 0.75f };
         for (float p : marks)
