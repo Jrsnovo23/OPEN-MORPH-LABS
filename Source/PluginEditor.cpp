@@ -501,8 +501,8 @@ void PPGWave3Editor::EQBandKnob::timerCallback()
 
 // ==================== EQCurveDisplay ====================
 
-PPGWave3Editor::EQCurveDisplay::EQCurveDisplay (juce::AudioProcessorValueTreeState& apvts)
-    : apvtsRef (apvts)
+PPGWave3Editor::EQCurveDisplay::EQCurveDisplay (PPGWave3Processor& processor)
+    : processorRef (processor), apvtsRef (processor.apvts)
 {
     startTimerHz (30);
 }
@@ -588,6 +588,41 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
     g.fillRoundedRectangle (r, 3.0f);
     g.setColour (juce::Colour (0xff2f2f2f));
     g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+
+    // ===== FASE 12: analizador de espectro (detrás de la curva de EQ) =====
+    {
+        const int numBins = PPGWave3Processor::numSpectrumBins;
+        const float dbFloor = -60.0f;
+        const float dbCeil  = 0.0f;
+
+        juce::Path spectrum;
+        for (int i = 0; i < numBins; ++i)
+        {
+            const float t = (float) i / (float) (numBins - 1);
+            const float x = r.getX() + t * r.getWidth();
+
+            const float db = processorRef.getSpectrumMagnitude (i);
+            const float normalized = juce::jlimit (0.0f, 1.0f,
+                                                   (db - dbFloor) / (dbCeil - dbFloor));
+            const float y = r.getBottom() - normalized * (r.getHeight() - 4.0f) - 2.0f;
+
+            if (i == 0) spectrum.startNewSubPath (x, y);
+            else        spectrum.lineTo (x, y);
+        }
+
+        // Relleno del espectro
+        juce::Path filledSpectrum = spectrum;
+        filledSpectrum.lineTo (r.getRight(), r.getBottom());
+        filledSpectrum.lineTo (r.getX(),     r.getBottom());
+        filledSpectrum.closeSubPath();
+
+        g.setColour (juce::Colour (0xffaaaaaa).withAlpha (0.10f));
+        g.fillPath (filledSpectrum);
+
+        // Línea del espectro
+        g.setColour (juce::Colour (0xffdddddd).withAlpha (0.35f));
+        g.strokePath (spectrum, juce::PathStrokeType (1.0f));
+    }
 
     const float sr = 44100.0f;
     const float fMin = 20.0f;
@@ -868,7 +903,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
                   { ParamIDs::eqLowGain, ParamIDs::eqLmidGain,
                     ParamIDs::eqHmidGain, ParamIDs::eqHighGain },
                   "GAIN", &fxInfoEq),
-      eqCurveDisplay (p.apvts),
+      eqCurveDisplay (p),
       phaserRate     (p.apvts, ParamIDs::phaserRate,     "RATE",  &fxInfoPhaser),
       phaserDepth    (p.apvts, ParamIDs::phaserDepth,    "DEPTH", &fxInfoPhaser),
       phaserFeedback (p.apvts, ParamIDs::phaserFeedback, "FEEDBK",&fxInfoPhaser),
@@ -1081,9 +1116,15 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     for (auto* c : allKnobs)
         addAndMakeVisible (c);
 
-    setLookAndFeel (&ppgLnf);
+        setLookAndFeel (&ppgLnf);
     setResizable (false, false);
     setSize (1280, 920);
+
+    // FASE 12: conectar los visualizadores con las fases reales del motor
+    osc1Preview.setPhaseSource (&p.osc1Phase);
+    osc2Preview.setPhaseSource (&p.osc2Phase);
+    lfo1Display.setPhaseSource (&p.lfo1Phase);
+    lfo2Display.setPhaseSource (&p.lfo2Phase);
 
     updateFxVisibility();
     updateEnvVisibility();
