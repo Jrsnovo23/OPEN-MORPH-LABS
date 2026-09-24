@@ -16,15 +16,12 @@ void ValueBoxLabel::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds().toFloat().reduced (0.5f);
 
-    // Fondo negro con esquinas redondeadas
     g.setColour (juce::Colour (0xee000000));
     g.fillRoundedRectangle (r, 4.0f);
 
-    // Borde dorado
     g.setColour (juce::Colour (0xffffaa00));
     g.drawRoundedRectangle (r, 4.0f, 1.0f);
 
-    // Texto
     g.setColour (findColour (juce::Label::textColourId));
     g.setFont (getFont());
     g.drawText (getText(), getLocalBounds(), juce::Justification::centred, false);
@@ -81,7 +78,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const juce::Colour fillColour   = enabled ? accent()       : juce::Colour (0xff333333);
     const juce::Colour pointerColour = enabled ? accentBright() : juce::Colour (0xff555555);
 
-    // Sombra exterior
     {
         const auto outerR = radius + 1.0f;
         g.setColour (juce::Colour (0x77000000));
@@ -89,7 +85,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                        outerR * 2.0f, outerR * 2.0f);
     }
 
-    // Track
     {
         juce::Path track;
         track.addCentredArc (centre.x, centre.y,
@@ -108,7 +103,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                    juce::PathStrokeType::rounded));
     }
 
-    // Fill
     {
         juce::Path fill;
         fill.addCentredArc (centre.x, centre.y,
@@ -130,7 +124,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                   juce::PathStrokeType::rounded));
     }
 
-    // Cuerpo
     const auto innerRadius = radius - trackThickness - 2.0f;
     if (innerRadius > 1.0f)
     {
@@ -152,7 +145,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
         g.setColour (juce::Colour (0xff3a3a3a));
         g.drawEllipse (bodyRect.reduced (0.5f), 1.0f);
 
-        // Highlight superior (arco limpio)
         {
             juce::Path highlight;
             const float hR = innerRadius * 0.78f;
@@ -168,7 +160,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                 juce::PathStrokeType::rounded));
         }
 
-        // Sombra interior inferior
         {
             juce::Path innerShadow;
             const float sR = innerRadius * 0.78f;
@@ -185,7 +176,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
         }
     }
 
-    // Puntero
     {
         const float pointerLength = innerRadius * 0.85f;
         juce::Path pointer;
@@ -224,94 +214,95 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
     if (isVertical)
     {
         const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat();
-        const float wheelW = juce::jmin (bounds.getWidth() - 2.0f, 24.0f);
+        const float wheelW = juce::jmin (bounds.getWidth() - 2.0f, 26.0f);
         const float wheelX = bounds.getCentreX() - wheelW * 0.5f;
         const float wheelY = bounds.getY() + 2.0f;
         const float wheelH = bounds.getHeight() - 4.0f;
 
         const auto wheelRect = juce::Rectangle<float> (wheelX, wheelY, wheelW, wheelH);
 
-        // Sombra exterior
-        g.setColour (juce::Colour (0x88000000));
-        g.fillRoundedRectangle (wheelRect.translated (-1.0f, 1.0f), 3.0f);
+        // ---- Sombra exterior ----
+        g.setColour (juce::Colour (0x99000000));
+        g.fillRoundedRectangle (wheelRect.translated (-1.5f, 1.5f), 4.0f);
 
-        // Cuerpo del wheel
+        // ---- Cuerpo cilíndrico (gradiente horizontal claro→oscuro→claro) ----
         {
-            juce::ColourGradient wGrad (juce::Colour (0xff1a1a1a),
-                                        wheelRect.getX(), wheelRect.getY(),
-                                        juce::Colour (0xff050505),
-                                        wheelRect.getX(), wheelRect.getBottom(),
-                                        false);
-            g.setGradientFill (wGrad);
+            juce::ColourGradient cyl (
+                juce::Colour (0xff0a0a0a), wheelRect.getX(), 0.0f,
+                juce::Colour (0xff0a0a0a), wheelRect.getRight(), 0.0f,
+                false);
+            cyl.addColour (0.12, juce::Colour (0xff202020));
+            cyl.addColour (0.38, juce::Colour (0xff6a6a6a));   // highlight principal
+            cyl.addColour (0.55, juce::Colour (0xff484848));
+            cyl.addColour (0.82, juce::Colour (0xff202020));
+            g.setGradientFill (cyl);
             g.fillRoundedRectangle (wheelRect, 3.0f);
         }
 
+        // ---- Borde ----
         g.setColour (juce::Colour (0xff2a2a2a));
         g.drawRoundedRectangle (wheelRect.reduced (0.5f), 3.0f, 1.0f);
 
-        // Rayas horizontales internas
+        // ---- Surcos horizontales (textura de grip) ----
         {
-            const int   numRidges = 24;
+            const int   numRidges = 28;
             const float ridgeH    = wheelH / (float) numRidges;
             for (int i = 0; i < numRidges; ++i)
             {
-                const float ry = wheelY + i * ridgeH + 1.0f;
-                const float rh = ridgeH - 1.5f;
+                const float ry = wheelY + i * ridgeH;
 
-                g.setColour (juce::Colour (0xff101010));
-                g.fillRect (wheelX + 2.0f, ry, wheelW - 4.0f, rh);
+                // Surco oscuro (corte)
+                g.setColour (juce::Colour (0x55000000));
+                g.fillRect (wheelX + 2.0f, ry, wheelW - 4.0f, 1.0f);
 
-                g.setColour (juce::Colour (0x1affffff));
-                g.fillRect (wheelX + 2.0f, ry, wheelW - 4.0f, 0.8f);
+                // Reflejo bajo el surco
+                g.setColour (juce::Colour (0x1cffffff));
+                g.fillRect (wheelX + 2.0f, ry + 1.0f, wheelW - 4.0f, 0.7f);
             }
         }
 
-        // Highlight lateral derecho
-        g.setColour (juce::Colour (0x22ffffff));
-        g.fillRect (wheelX + wheelW - 2.0f, wheelY + 2.0f, 1.0f, wheelH - 4.0f);
+        // ---- Highlight borde derecho (curvatura) ----
+        g.setColour (juce::Colour (0x33ffffff));
+        g.fillRect (wheelX + wheelW - 2.5f, wheelY + 4.0f, 1.0f, wheelH - 8.0f);
 
-        // Thumb
+        // ---- Sombra borde izquierdo ----
+        g.setColour (juce::Colour (0x77000000));
+        g.fillRect (wheelX + 1.0f, wheelY + 3.0f, 1.0f, wheelH - 6.0f);
+
+        // ---- Thumb (línea dorada delgada, 7 px) ----
         const float thumbY = juce::jlimit (wheelY, wheelY + wheelH, sliderPos);
         {
-            const float thumbH = 14.0f;
+            const float thumbH = 7.0f;
             const float thumbTop = juce::jlimit (wheelY,
                                                  wheelY + wheelH - thumbH,
                                                  thumbY - thumbH * 0.5f);
 
             const auto thumbRect = juce::Rectangle<float> (
-                wheelX + 1.0f, thumbTop, wheelW - 2.0f, thumbH);
+                wheelX + 1.5f, thumbTop, wheelW - 3.0f, thumbH);
 
-            g.setColour (juce::Colour (0x88000000));
-            g.fillRoundedRectangle (thumbRect.translated (0.0f, 1.0f), 2.0f);
+            // Sombra debajo
+            g.setColour (juce::Colour (0xaa000000));
+            g.fillRoundedRectangle (thumbRect.translated (0.0f, 1.2f), 1.5f);
 
+            // Cuerpo dorado
             {
-                juce::ColourGradient tGrad (juce::Colour (0xffffcc55),
+                juce::ColourGradient tGrad (juce::Colour (0xffffe08a),
                                             thumbRect.getX(), thumbRect.getY(),
-                                            juce::Colour (0xffa06800),
+                                            juce::Colour (0xffb07000),
                                             thumbRect.getX(), thumbRect.getBottom(),
                                             false);
                 g.setGradientFill (tGrad);
-                g.fillRoundedRectangle (thumbRect, 2.0f);
+                g.fillRoundedRectangle (thumbRect, 1.5f);
             }
 
-            g.setColour (juce::Colour (0x88ffffff));
-            g.fillRect (thumbRect.getX() + 1.0f, thumbRect.getY() + 1.0f,
-                        thumbRect.getWidth() - 2.0f, 1.0f);
+            // Highlight superior
+            g.setColour (juce::Colour (0xccffffff));
+            g.fillRect (thumbRect.getX() + 1.0f, thumbRect.getY() + 0.5f,
+                        thumbRect.getWidth() - 2.0f, 0.7f);
 
+            // Borde fino
             g.setColour (juce::Colour (0xff5a3a00));
-            g.drawRoundedRectangle (thumbRect.reduced (0.5f), 2.0f, 1.0f);
-        }
-
-        // Flecha decorativa debajo
-        {
-            juce::Path downArrow;
-            const float ax = wheelX + wheelW * 0.5f;
-            const float ay = wheelY + wheelH + 3.0f;
-            downArrow.startNewSubPath (ax - 4.0f, ay);
-            downArrow.lineTo (ax, ay + 4.0f);
-            downArrow.lineTo (ax + 4.0f, ay);
-            g.setColour (juce::Colour (0xff666666));
-            g.strokePath (downArrow, juce::PathStrokeType (1.2f));
+            g.drawRoundedRectangle (thumbRect.reduced (0.3f), 1.5f, 0.6f);
         }
 
         return;
@@ -326,7 +317,6 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
         const auto trackRect = juce::Rectangle<float> (
             bounds.getX(), trackY, bounds.getWidth(), trackH);
 
-        // Fondo con gradiente
         {
             juce::ColourGradient grad (juce::Colour (0xff1a1a1a),
                                        trackRect.getX(), trackRect.getY(),
@@ -340,7 +330,6 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
         g.setColour (juce::Colour (0xff2a2a2a));
         g.drawRoundedRectangle (trackRect.reduced (0.5f), 2.0f, 1.0f);
 
-        // Surcos verticales
         {
             const int   numRidges = 30;
             const float ridgeW    = trackRect.getWidth() / (float) numRidges;
@@ -358,12 +347,10 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
             }
         }
 
-        // Highlight superior del track
         g.setColour (juce::Colour (0x22ffffff));
         g.fillRect (trackRect.getX() + 2.0f, trackRect.getY() + 1.0f,
                     trackRect.getWidth() - 4.0f, 0.8f);
 
-        // Thumb dorado
         {
             const float thumbW = 14.0f;
             const float thumbH = trackH + 4.0f;
