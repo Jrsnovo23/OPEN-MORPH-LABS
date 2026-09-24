@@ -1472,22 +1472,86 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
+    // ============ STEP SEQUENCER (preview) ============
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
 
+        // Fondo
         g.setColour (juce::Colour (0xff141414));
         g.fillRoundedRectangle (r, 4.0f);
 
-        juce::Path p;
-        p.addRoundedRectangle (r.reduced (0.5f), 4.0f);
-        juce::PathStrokeType stroke (1.0f, juce::PathStrokeType::curved);
-        float dashes[] = { 5.0f, 5.0f };
-        juce::Path dashedPath;
-        stroke.createDashedStroke (dashedPath, p, dashes, 2);
-        g.setColour (juce::Colour (0xff2f2f2f).withAlpha (0.8f));
-        g.strokePath (dashedPath, stroke);
+        // Borde punteado
+        {
+            juce::Path p;
+            p.addRoundedRectangle (r.reduced (0.5f), 4.0f);
+            juce::PathStrokeType stroke (1.0f, juce::PathStrokeType::curved);
+            float dashes[] = { 5.0f, 5.0f };
+            juce::Path dashedPath;
+            stroke.createDashedStroke (dashedPath, p, dashes, 2);
+            g.setColour (juce::Colour (0xff2f2f2f).withAlpha (0.8f));
+            g.strokePath (dashedPath, stroke);
+        }
 
+        // Grid de 16 pasos (preview del secuenciador futuro)
+        const int numSteps = 16;
+        const auto outer = r.reduced (10.0f, 8.0f);
+
+        const float topRowH    = 14.0f;
+        const float bottomRowH = 14.0f;
+
+        auto grid = outer;
+        auto stepNumRow = grid.removeFromTop (topRowH);
+        auto barNumRow  = grid.removeFromBottom (bottomRowH);
+
+        const float stepW = grid.getWidth() / (float) numSteps;
+
+        // Columnas verticales (más marcadas cada 4)
+        for (int i = 0; i <= numSteps; ++i)
+        {
+            const float x = grid.getX() + i * stepW;
+            const bool isBarLine = (i % 4 == 0);
+
+            g.setColour (juce::Colour (0xff262626)
+                            .withAlpha (isBarLine ? 0.90f : 0.35f));
+            const float t = isBarLine ? 1.2f : 0.7f;
+            g.fillRect (x - t * 0.5f, grid.getY(), t, grid.getHeight());
+        }
+
+        // Línea media horizontal (eje de pitch 0)
+        g.setColour (juce::Colour (0xff262626).withAlpha (0.5f));
+        g.fillRect (grid.getX(), grid.getCentreY() - 0.5f,
+                    grid.getWidth(), 1.0f);
+
+        // Números de paso (1..16) arriba
+        g.setFont (juce::Font (juce::FontOptions (8.0f * currentScale,
+                                                  juce::Font::plain)));
+        for (int i = 0; i < numSteps; ++i)
+        {
+            const float x = grid.getX() + i * stepW;
+            const bool isBarStart = (i % 4 == 0);
+            g.setColour (isBarStart ? juce::Colour (0xffffaa00).withAlpha (0.75f)
+                                    : juce::Colour (0xff4a4a4a));
+            g.drawText (juce::String (i + 1),
+                        (int) x, (int) stepNumRow.getY(),
+                        (int) stepW, (int) stepNumRow.getHeight(),
+                        juce::Justification::centred);
+        }
+
+        // Números de compás (1..4) abajo
+        g.setFont (juce::Font (juce::FontOptions (9.0f * currentScale,
+                                                  juce::Font::bold)));
+        for (int bar = 0; bar < 4; ++bar)
+        {
+            const float x = grid.getX() + bar * 4 * stepW;
+            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.55f));
+            g.drawText (juce::String (bar + 1),
+                        (int) x, (int) barNumRow.getY(),
+                        (int) (stepW * 4), (int) barNumRow.getHeight(),
+                        juce::Justification::centred);
+        }
+
+        // Texto central tenue (por encima del grid)
         g.setColour (juce::Colour (0xff3a3a3a));
         g.setFont (juce::Font (juce::FontOptions (10.0f * currentScale,
                                                   juce::Font::italic)));
@@ -1495,9 +1559,11 @@ void PPGWave3Editor::paint (juce::Graphics& g)
                     seqReservedArea, juce::Justification::centred);
     }
 
+    // Columnas de efectos
     for (int i = 0; i < 8; ++i)
         drawBox (g, fxColumnAreas[i]);
 
+    // Teclado
     if (! keyboardArea.isEmpty())
     {
         const auto r = keyboardArea.toFloat();
@@ -1556,10 +1622,18 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 {
     if (area.isEmpty()) return;
 
-    const float omlSize = juce::jmax (16.0f, (float) area.getHeight() * 0.85f);
+    // OML un poco más grande que antes
+    const float omlSize = juce::jmax (18.0f, (float) area.getHeight() * 0.95f);
     g.setFont (juce::Font (juce::FontOptions (omlSize, juce::Font::bold)));
     g.setColour (PPGLookAndFeel::accent());
     g.drawText ("OML", area, juce::Justification::centredLeft, false);
+
+    // Barra dorada fina como separador a la derecha del logo
+    const int barX = area.getRight() - 2;
+    const int barY = area.getY() + 4;
+    const int barH = area.getHeight() - 8;
+    g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
+    g.fillRect (barX, barY, 1, barH);
 }
 
 // ==================== Helpers ====================
