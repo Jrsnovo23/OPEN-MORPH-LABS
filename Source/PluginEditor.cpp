@@ -31,12 +31,6 @@ void PPGWave3Editor::InfoDisplay::paint (juce::Graphics& g)
         return;
     }
 
-    // Reparto dinámico:
-    //   - Calculamos el ancho natural del nombre y del valor.
-    //   - Si caben juntos (con 4px de gap), nombre a la izq + valor a la der.
-    //   - Si no caben, el valor se reserva completo a la derecha y el nombre se
-    //     comprime con elipsis a la izquierda. Así el número siempre es legible.
-
     const auto font = g.getCurrentFont();
     const int nameW  = (int) std::ceil (font.getStringWidthFloat (paramName))  + 2;
     const int valueW = (int) std::ceil (font.getStringWidthFloat (paramValue)) + 2;
@@ -45,7 +39,6 @@ void PPGWave3Editor::InfoDisplay::paint (juce::Graphics& g)
 
     if (nameW + valueW + gapPx <= totalW)
     {
-        // Todo cabe: nombre completo a la izq + valor completo a la der
         g.drawText (paramName, textArea.removeFromLeft (nameW),
                     juce::Justification::centredLeft);
         g.drawText (paramValue, textArea,
@@ -53,11 +46,9 @@ void PPGWave3Editor::InfoDisplay::paint (juce::Graphics& g)
     }
     else
     {
-        // No cabe: el valor se reserva hasta el 65% del ancho
         const int reserved = juce::jmin (valueW, (int) (totalW * 0.65f));
         auto valueArea = textArea.removeFromRight (reserved);
 
-        // El nombre ocupa lo que queda con elipsis
         g.drawFittedText (paramName, textArea,
                           juce::Justification::centredLeft, 1, 0.9f);
         g.drawText (paramValue, valueArea,
@@ -89,7 +80,6 @@ void PPGWave3Editor::PresetDisplay::paint (juce::Graphics& g)
 
     auto inner = getLocalBounds().reduced (6, 2);
 
-    // FASE 7: icono ▼ a la derecha indicando que se puede desplegar
     const int arrowW = 14;
     auto arrowArea = inner.removeFromRight (arrowW);
     {
@@ -116,7 +106,6 @@ void PPGWave3Editor::PresetDisplay::paint (juce::Graphics& g)
                 catRow, juce::Justification::centred, false);
 }
 
-// FASE 7: click abre el menú de presets.
 void PPGWave3Editor::PresetDisplay::mouseDown (const juce::MouseEvent&)
 {
     if (onOpenMenu)
@@ -138,7 +127,6 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     slider.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffffcc55));
     addAndMakeVisible (slider);
 
-    // Nombre (sin caja, arriba del knob)
     label.setText (labelText, juce::dontSendNotification);
     label.setJustificationType (juce::Justification::centred);
     label.setColour (juce::Label::textColourId, juce::Colour (0xffaaaaaa));
@@ -146,7 +134,6 @@ PPGWave3Editor::RotaryKnob::RotaryKnob (juce::AudioProcessorValueTreeState& stat
     label.setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
     addAndMakeVisible (label);
 
-    // Valor con caja redondeada (abajo del knob)
     valueLabel.setText ("--", juce::dontSendNotification);
     addAndMakeVisible (valueLabel);
 
@@ -410,6 +397,20 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     startTimerHz (30);
 }
 
+// *** AÑADIDO: destructor que faltaba ***
+PPGWave3Editor::EQBandKnob::~EQBandKnob()
+{
+    stopTimer();
+}
+
+// *** AÑADIDO: setActiveBand que faltaba ***
+void PPGWave3Editor::EQBandKnob::setActiveBand (int band)
+{
+    activeBand = juce::jlimit (0, 3, band);
+    refreshSliderFromParam();
+    repaint();
+}
+
 void PPGWave3Editor::EQBandKnob::setScale (float s)
 {
     scale = s;
@@ -471,7 +472,6 @@ void PPGWave3Editor::EQBandKnob::updateInfoText()
     auto* param = apvtsRef.getParameter (id);
     if (param == nullptr) return;
 
-    // Formateamos el valor numérico real a 5 caracteres
     float realValue = 0.0f;
     if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (param))
         realValue = ranged->getNormalisableRange().convertFrom0to1 (param->getValue());
@@ -725,7 +725,6 @@ PPGWave3Editor::FxTab::FxTab (juce::AudioProcessorValueTreeState& apvts,
 void PPGWave3Editor::FxTab::resized()
 {
     auto r = getLocalBounds();
-    // El toggle va en la mitad inferior del FxTab (fila de 20px)
     auto bottomRow = r.removeFromBottom (20);
     toggleBtn.setBounds (bottomRow.reduced (2, 2));
 }
@@ -733,9 +732,8 @@ void PPGWave3Editor::FxTab::resized()
 void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
 {
     auto r = getLocalBounds();
-    r.removeFromBottom (20);   // reservamos la fila del toggle
+    r.removeFromBottom (20);
 
-    // Título (arriba a la izquierda). El InfoDisplay se dibujará encima en la mitad derecha.
     g.setColour (juce::Colour (0xffffaa00));
     g.setFont (juce::Font (juce::FontOptions (9.5f, juce::Font::bold)));
 
@@ -1474,8 +1472,6 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    // NOTA: ya no se dibuja el título "EFFECTS" (cada columna tiene el suyo).
-
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
@@ -1930,7 +1926,7 @@ void PPGWave3Editor::resized()
         layoutRow (inner.removeFromTop (rowH), *mod4Src, *mod4Dst, mod4Amt);
     }
 
-        // ==================== EFFECTS ====================
+    // ==================== EFFECTS ====================
     {
         juce::Rectangle<int> inner = fxArea.reduced (6, 4);
 
@@ -1954,7 +1950,6 @@ void PPGWave3Editor::resized()
             x += w + colGap;
         }
 
-        // Cabecera de cada columna: FxTab ocupa 40px (título arriba, toggle abajo).
         const int headerH = 40;
         const int toggleRowH = 20;
 
@@ -1967,7 +1962,6 @@ void PPGWave3Editor::resized()
             auto headerArea = col.removeFromTop (headerH);
             tab.setBounds (headerArea);
 
-            // InfoDisplay en la mitad derecha de la fila superior del header
             auto infoRow = headerArea.withHeight (toggleRowH);
             auto infoArea = infoRow.removeFromRight (colW / 2);
             info.setBounds (infoArea.reduced (2, 3));
