@@ -15,6 +15,17 @@ namespace synth
 
         void setBpmSource (std::atomic<double>* bpm) { bpmSource = bpm; }
 
+        void setPhaseTargets (std::atomic<float>* osc1Ph,
+                              std::atomic<float>* osc2Ph,
+                              std::atomic<float>* lfo1Ph,
+                              std::atomic<float>* lfo2Ph)
+        {
+            osc1PhaseTarget = osc1Ph;
+            osc2PhaseTarget = osc2Ph;
+            lfo1PhaseTarget = lfo1Ph;
+            lfo2PhaseTarget = lfo2Ph;
+        }
+
         bool canPlaySound (juce::SynthesiserSound*) override;
         void startNote (int midiNote, float velocity,
                         juce::SynthesiserSound*, int currentPitchWheelPos) override;
@@ -64,10 +75,21 @@ namespace synth
 
         // ===== FASE 8: Vintage Character (per-voice) =====
         juce::Random vintageRandom;
-        float driftPhase       = 0.0f;   // 0..1
-        float driftSeed        = 0.0f;   // 0..1 (fase offset por voz)
-        float voiceDetune      = 0.0f;   // en cents (varía por nota)
-        float voiceFilterOffset= 0.0f;   // en octavas (varía por nota)
-        float voiceLevelOffset = 1.0f;   // multiplicador (varía por nota)
+        float driftPhase       = 0.0f;
+        float driftSeed        = 0.0f;
+        float voiceDetune      = 0.0f;
+        float voiceFilterOffset= 0.0f;
+        float voiceLevelOffset = 1.0f;
+
+        // ===== FASE 12: trackers de fase para visualizadores =====
+        std::atomic<float>* osc1PhaseTarget = nullptr;
+        std::atomic<float>* osc2PhaseTarget = nullptr;
+        std::atomic<float>* lfo1PhaseTarget = nullptr;
+        std::atomic<float>* lfo2PhaseTarget = nullptr;
+
+        float osc1PhaseTrack = 0.0f;
+        float osc2PhaseTrack = 0.0f;
+        float lfo1PhaseTrack = 0.0f;
+        float lfo2PhaseTrack = 0.0f;
     };
 }
