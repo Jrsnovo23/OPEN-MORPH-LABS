@@ -380,18 +380,21 @@ namespace ui
 
         if (label.isNotEmpty())
         {
-            const int labelW = 20;
+            const int labelW = 22;
             auto labelArea = bar.removeFromLeft ((float) labelW);
 
             g.setColour (juce::Colour (0xff888888));
-            g.setFont (juce::FontOptions (juce::jmax (7.0f, bar.getHeight() * 0.38f),
+            g.setFont (juce::FontOptions (juce::jmax (7.0f, bar.getHeight() * 0.40f),
                                           juce::Font::bold));
             g.drawText (label, labelArea, juce::Justification::centred);
 
-            bar.removeFromLeft (2.0f);
+            bar.removeFromLeft (3.0f);
         }
 
-        const float gap  = 1.0f;
+        // *** FIX: guardamos el área completa (L + R) ANTES de partirla en dos barras ***
+        const auto marksArea = bar;
+
+        const float gap  = 1.5f;
         const float barH = (bar.getHeight() - gap) * 0.5f;
 
         auto barL = bar.removeFromTop (barH);
@@ -417,10 +420,11 @@ namespace ui
         drawBar (barL, smoothedL);
         drawBar (barR, smoothedR);
 
-        g.setColour (juce::Colour (0xff2f2f2f));
+        // *** FIX: las marcas cubren ahora los dos canales (L y R) ***
+        g.setColour (juce::Colour (0x88ffffff));
         const float marks[] = { 0.25f, 0.5f, 0.75f };
         for (float p : marks)
-            g.drawVerticalLine ((int) (bar.getX() + bar.getWidth() * p),
-                                bar.getY(), bar.getBottom());
+            g.drawVerticalLine ((int) (marksArea.getX() + marksArea.getWidth() * p),
+                                marksArea.getY(), marksArea.getBottom());
     }
 }
