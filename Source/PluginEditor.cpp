@@ -1663,7 +1663,7 @@ void PPGWave3Editor::resized()
     }
 
     // ===== Keyboard strip =====
-    auto keyboardStrip = r.removeFromBottom (92);
+    auto keyboardStrip = r.removeFromBottom (108);
     keyboardArea = keyboardStrip;
 
     keyboardStrip.reduce (10, 8);
