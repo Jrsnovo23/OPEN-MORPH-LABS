@@ -300,7 +300,7 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
     // ============ HORIZONTAL: fader cilíndrico (mod matrix) ============
     {
         const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat();
-        const float trackH = juce::jmin (bounds.getHeight() - 2.0f, 26.0f);
+        const float trackH = bounds.getHeight() - 2.0f;
         const float trackY = bounds.getCentreY() - trackH * 0.5f;
         const float trackX = bounds.getX() + 2.0f;
         const float trackW = bounds.getWidth() - 4.0f;
