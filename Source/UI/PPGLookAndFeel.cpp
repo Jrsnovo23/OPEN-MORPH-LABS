@@ -1,4 +1,36 @@
 #include "PPGLookAndFeel.h"
+#include <cmath>
+
+// ==================== ValueBoxLabel ====================
+
+ValueBoxLabel::ValueBoxLabel()
+{
+    setJustificationType (juce::Justification::centred);
+    setColour (juce::Label::textColourId, juce::Colour (0xffffcc55));
+    setColour (juce::Label::backgroundColourId, juce::Colour (0x00000000));
+    setColour (juce::Label::outlineColourId,    juce::Colour (0x00000000));
+    setInterceptsMouseClicks (false, false);
+}
+
+void ValueBoxLabel::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat().reduced (0.5f);
+
+    // Fondo negro con esquinas redondeadas
+    g.setColour (juce::Colour (0xee000000));
+    g.fillRoundedRectangle (r, 4.0f);
+
+    // Borde dorado
+    g.setColour (juce::Colour (0xffffaa00));
+    g.drawRoundedRectangle (r, 4.0f, 1.0f);
+
+    // Texto
+    g.setColour (findColour (juce::Label::textColourId));
+    g.setFont (getFont());
+    g.drawText (getText(), getLocalBounds(), juce::Justification::centred, false);
+}
+
+// ==================== PPGLookAndFeel ====================
 
 PPGLookAndFeel::PPGLookAndFeel()
 {
@@ -10,14 +42,25 @@ PPGLookAndFeel::PPGLookAndFeel()
     setColour (juce::TextEditor::backgroundColourId, bgPanelLight());
     setColour (juce::TextEditor::textColourId, textPrimary());
     setColour (juce::TextEditor::highlightColourId, accent().withAlpha (0.4f));
-
-    // Labels: fondo negro + borde amarillo por defecto
-    setColour (juce::Label::backgroundColourId, juce::Colour (0xff000000));
-    setColour (juce::Label::textColourId,       juce::Colour (0xffffcc55));
-    setColour (juce::Label::outlineColourId,    juce::Colour (0xffffaa00));
 }
 
-// ============ ROTARY KNOB (con relieve correcto) ============
+juce::String PPGLookAndFeel::formatValueShort (float v)
+{
+    const float a = std::abs (v);
+    const int signChars = (v < 0.0f) ? 1 : 0;
+
+    int intDigits;
+    if (a < 1.0f) intDigits = 1;
+    else          intDigits = (int) std::floor (std::log10 (a)) + 1;
+
+    int maxDecimals = 5 - signChars - intDigits - 1;
+    if (maxDecimals < 0) maxDecimals = 0;
+    if (maxDecimals > 3) maxDecimals = 3;
+
+    return juce::String (v, maxDecimals);
+}
+
+// ============ ROTARY KNOB ============
 void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                        int x, int y, int width, int height,
                                        float sliderPos,
@@ -38,7 +81,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
     const juce::Colour fillColour   = enabled ? accent()       : juce::Colour (0xff333333);
     const juce::Colour pointerColour = enabled ? accentBright() : juce::Colour (0xff555555);
 
-    // === 0. SOMBRA EXTERIOR ===
+    // Sombra exterior
     {
         const auto outerR = radius + 1.0f;
         g.setColour (juce::Colour (0x77000000));
@@ -46,7 +89,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                        outerR * 2.0f, outerR * 2.0f);
     }
 
-    // === 1. TRACK ===
+    // Track
     {
         juce::Path track;
         track.addCentredArc (centre.x, centre.y,
@@ -65,7 +108,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                    juce::PathStrokeType::rounded));
     }
 
-    // === 2. FILL dorado con glow ===
+    // Fill
     {
         juce::Path fill;
         fill.addCentredArc (centre.x, centre.y,
@@ -87,7 +130,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                   juce::PathStrokeType::rounded));
     }
 
-    // === 3. CUERPO DEL KNOB ===
+    // Cuerpo
     const auto innerRadius = radius - trackThickness - 2.0f;
     if (innerRadius > 1.0f)
     {
@@ -95,7 +138,6 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
             centre.x - innerRadius, centre.y - innerRadius,
             innerRadius * 2.0f, innerRadius * 2.0f);
 
-        // 3a. Gradiente radial (más claro arriba, más oscuro abajo)
         {
             juce::ColourGradient bodyGrad (
                 juce::Colour (0xff252525),
@@ -107,15 +149,13 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
             g.fillEllipse (bodyRect);
         }
 
-        // 3b. Borde exterior del cuerpo
         g.setColour (juce::Colour (0xff3a3a3a));
         g.drawEllipse (bodyRect.reduced (0.5f), 1.0f);
 
-        // 3c. HIGHLIGHT SUPERIOR — arco limpio sobre el propio círculo
-        //     (NO aplastado, sino siguiendo el contorno)
+        // Highlight superior (arco limpio)
         {
             juce::Path highlight;
-            const float hR = innerRadius * 0.78f;   // radio del highlight
+            const float hR = innerRadius * 0.78f;
             highlight.addCentredArc (centre.x, centre.y, hR, hR,
                                      0.0f,
                                      juce::MathConstants<float>::pi * 1.18f,
@@ -128,7 +168,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                                 juce::PathStrokeType::rounded));
         }
 
-        // 3d. Sombra interior inferior — arco limpio pegado al borde inferior
+        // Sombra interior inferior
         {
             juce::Path innerShadow;
             const float sR = innerRadius * 0.78f;
@@ -145,7 +185,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
         }
     }
 
-    // === 4. PUNTERO ===
+    // Puntero
     {
         const float pointerLength = innerRadius * 0.85f;
         juce::Path pointer;
@@ -171,7 +211,7 @@ void PPGLookAndFeel::drawRotarySlider (juce::Graphics& g,
     }
 }
 
-// ============ LINEAR SLIDER (pitch/mod wheels físicas) ============
+// ============ LINEAR SLIDER ============
 void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
                                        int x, int y, int width, int height,
                                        float sliderPos, float minSliderPos, float maxSliderPos,
@@ -180,9 +220,9 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
 {
     const bool isVertical = slider.isVertical();
 
+    // ============ VERTICAL: pitch / mod wheel física ============
     if (isVertical)
     {
-        // === VERTICAL: pitch / mod wheels FÍSICAS ===
         const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat();
         const float wheelW = juce::jmin (bounds.getWidth() - 2.0f, 24.0f);
         const float wheelX = bounds.getCentreX() - wheelW * 0.5f;
@@ -191,11 +231,11 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
 
         const auto wheelRect = juce::Rectangle<float> (wheelX, wheelY, wheelW, wheelH);
 
-        // 1. Sombra exterior (borde izquierdo)
+        // Sombra exterior
         g.setColour (juce::Colour (0x88000000));
         g.fillRoundedRectangle (wheelRect.translated (-1.0f, 1.0f), 3.0f);
 
-        // 2. Fondo del wheel (cuerpo con gradiente vertical)
+        // Cuerpo del wheel
         {
             juce::ColourGradient wGrad (juce::Colour (0xff1a1a1a),
                                         wheelRect.getX(), wheelRect.getY(),
@@ -206,11 +246,10 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
             g.fillRoundedRectangle (wheelRect, 3.0f);
         }
 
-        // 3. Bordes (left darker, right lighter — relieve)
         g.setColour (juce::Colour (0xff2a2a2a));
         g.drawRoundedRectangle (wheelRect.reduced (0.5f), 3.0f, 1.0f);
 
-        // 4. Rayas horizontales internas (aspecto de rueda física)
+        // Rayas horizontales internas
         {
             const int   numRidges = 24;
             const float ridgeH    = wheelH / (float) numRidges;
@@ -219,28 +258,20 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
                 const float ry = wheelY + i * ridgeH + 1.0f;
                 const float rh = ridgeH - 1.5f;
 
-                // Base oscura
                 g.setColour (juce::Colour (0xff101010));
                 g.fillRect (wheelX + 2.0f, ry, wheelW - 4.0f, rh);
 
-                // Highlight sutil arriba de cada cresta
                 g.setColour (juce::Colour (0x1affffff));
                 g.fillRect (wheelX + 2.0f, ry, wheelW - 4.0f, 0.8f);
             }
         }
 
-        // 5. Highlight lateral derecho (luz desde la derecha)
-        {
-            g.setColour (juce::Colour (0x22ffffff));
-            g.fillRect (wheelX + wheelW - 2.0f, wheelY + 2.0f, 1.0f, wheelH - 4.0f);
-        }
+        // Highlight lateral derecho
+        g.setColour (juce::Colour (0x22ffffff));
+        g.fillRect (wheelX + wheelW - 2.0f, wheelY + 2.0f, 1.0f, wheelH - 4.0f);
 
-        // 6. Zona "activa" (dorada) desde el fondo hasta el thumb
+        // Thumb
         const float thumbY = juce::jlimit (wheelY, wheelY + wheelH, sliderPos);
-
-        // Guardamos la geometría para dibujar el thumb encima
-
-        // 7. Thumb (bloque ancho que ocupa el ancho del wheel)
         {
             const float thumbH = 14.0f;
             const float thumbTop = juce::jlimit (wheelY,
@@ -250,11 +281,9 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
             const auto thumbRect = juce::Rectangle<float> (
                 wheelX + 1.0f, thumbTop, wheelW - 2.0f, thumbH);
 
-            // Sombra del thumb
             g.setColour (juce::Colour (0x88000000));
             g.fillRoundedRectangle (thumbRect.translated (0.0f, 1.0f), 2.0f);
 
-            // Cuerpo del thumb (gradiente dorado)
             {
                 juce::ColourGradient tGrad (juce::Colour (0xffffcc55),
                                             thumbRect.getX(), thumbRect.getY(),
@@ -265,17 +294,15 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
                 g.fillRoundedRectangle (thumbRect, 2.0f);
             }
 
-            // Highlight del thumb
             g.setColour (juce::Colour (0x88ffffff));
             g.fillRect (thumbRect.getX() + 1.0f, thumbRect.getY() + 1.0f,
                         thumbRect.getWidth() - 2.0f, 1.0f);
 
-            // Borde
             g.setColour (juce::Colour (0xff5a3a00));
             g.drawRoundedRectangle (thumbRect.reduced (0.5f), 2.0f, 1.0f);
         }
 
-        // 8. Flechas arriba y abajo del wheel (decorativas)
+        // Flecha decorativa debajo
         {
             juce::Path downArrow;
             const float ax = wheelX + wheelW * 0.5f;
@@ -290,30 +317,84 @@ void PPGLookAndFeel::drawLinearSlider (juce::Graphics& g,
         return;
     }
 
-    // === HORIZONTAL ===
-    const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat();
-    const float trackY = bounds.getCentreY();
-    const float trackH = 4.0f;
-    const float thumbR = 6.0f;
-
-    g.setColour (juce::Colour (0xff2a2a2a));
-    g.fillRoundedRectangle (bounds.getX(), trackY - trackH * 0.5f,
-                            bounds.getWidth(), trackH, 2.0f);
-
-    const float minX = juce::jmin (minSliderPos, maxSliderPos);
-    const float maxX = juce::jmax (minSliderPos, maxSliderPos);
-
-    if (sliderPos >= minX && sliderPos <= maxX)
+    // ============ HORIZONTAL: ribbon con surcos (para mod matrix) ============
     {
-        g.setColour (accent());
-        g.fillRoundedRectangle (minX, trackY - trackH * 0.5f,
-                                sliderPos - minX, trackH, 2.0f);
-    }
+        const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (0.0f, 2.0f);
+        const float trackH = juce::jmin (bounds.getHeight() - 4.0f, 12.0f);
+        const float trackY = bounds.getCentreY() - trackH * 0.5f;
 
-    g.setColour (accentBright());
-    g.fillEllipse (sliderPos - thumbR, trackY - thumbR, thumbR * 2.0f, thumbR * 2.0f);
-    g.setColour (juce::Colour (0xff151515));
-    g.drawEllipse (sliderPos - thumbR, trackY - thumbR, thumbR * 2.0f, thumbR * 2.0f, 1.0f);
+        const auto trackRect = juce::Rectangle<float> (
+            bounds.getX(), trackY, bounds.getWidth(), trackH);
+
+        // Fondo con gradiente
+        {
+            juce::ColourGradient grad (juce::Colour (0xff1a1a1a),
+                                       trackRect.getX(), trackRect.getY(),
+                                       juce::Colour (0xff050505),
+                                       trackRect.getX(), trackRect.getBottom(),
+                                       false);
+            g.setGradientFill (grad);
+            g.fillRoundedRectangle (trackRect, 2.0f);
+        }
+
+        g.setColour (juce::Colour (0xff2a2a2a));
+        g.drawRoundedRectangle (trackRect.reduced (0.5f), 2.0f, 1.0f);
+
+        // Surcos verticales
+        {
+            const int   numRidges = 30;
+            const float ridgeW    = trackRect.getWidth() / (float) numRidges;
+            for (int i = 0; i < numRidges; ++i)
+            {
+                const float rx = trackRect.getX() + i * ridgeW + 0.5f;
+                const float rw = ridgeW - 1.0f;
+                if (rw <= 0.0f) continue;
+
+                g.setColour (juce::Colour (0xff101010));
+                g.fillRect (rx, trackRect.getY() + 2.0f, rw, trackRect.getHeight() - 4.0f);
+
+                g.setColour (juce::Colour (0x18ffffff));
+                g.fillRect (rx, trackRect.getY() + 2.0f, rw, 0.8f);
+            }
+        }
+
+        // Highlight superior del track
+        g.setColour (juce::Colour (0x22ffffff));
+        g.fillRect (trackRect.getX() + 2.0f, trackRect.getY() + 1.0f,
+                    trackRect.getWidth() - 4.0f, 0.8f);
+
+        // Thumb dorado
+        {
+            const float thumbW = 14.0f;
+            const float thumbH = trackH + 4.0f;
+            const float thumbX = juce::jlimit (trackRect.getX(),
+                                               trackRect.getRight() - thumbW,
+                                               sliderPos - thumbW * 0.5f);
+            const float thumbY = trackRect.getCentreY() - thumbH * 0.5f;
+
+            const auto thumbRect = juce::Rectangle<float> (thumbX, thumbY, thumbW, thumbH);
+
+            g.setColour (juce::Colour (0x88000000));
+            g.fillRoundedRectangle (thumbRect.translated (0.0f, 1.0f), 2.0f);
+
+            {
+                juce::ColourGradient tGrad (juce::Colour (0xffffcc55),
+                                            thumbRect.getX(), thumbRect.getY(),
+                                            juce::Colour (0xffa06800),
+                                            thumbRect.getX(), thumbRect.getBottom(),
+                                            false);
+                g.setGradientFill (tGrad);
+                g.fillRoundedRectangle (thumbRect, 2.0f);
+            }
+
+            g.setColour (juce::Colour (0x88ffffff));
+            g.fillRect (thumbRect.getX() + 1.0f, thumbRect.getY() + 1.0f,
+                        thumbRect.getWidth() - 2.0f, 1.0f);
+
+            g.setColour (juce::Colour (0xff5a3a00));
+            g.drawRoundedRectangle (thumbRect.reduced (0.5f), 2.0f, 1.0f);
+        }
+    }
 }
 
 // ============ BUTTON ============
