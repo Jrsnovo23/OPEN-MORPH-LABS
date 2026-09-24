@@ -1,6 +1,15 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 
+// Label con caja redondeada (fondo negro + borde amarillo).
+// Lo usamos para mostrar el valor numérico de cada knob.
+class ValueBoxLabel : public juce::Label
+{
+public:
+    ValueBoxLabel();
+    void paint (juce::Graphics&) override;
+};
+
 // Look & Feel inspirado en el PPG Wave 3.3 original.
 class PPGLookAndFeel : public juce::LookAndFeel_V4
 {
@@ -45,4 +54,11 @@ public:
     void getIdealPopupMenuItemSize (const juce::String& text, bool isSeparator,
                                     int standardMenuItemHeight,
                                     int& idealWidth, int& idealHeight) override;
+
+    // Formatea el valor de un knob a 5 caracteres máximo.
+    //   0.5562064  →  "0.556"
+    //   18.0       →  "18.00"
+    //   -18.0      →  "-18.0"
+    //   8000       →  "8000"
+    static juce::String formatValueShort (float v);
 };
