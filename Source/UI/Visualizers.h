@@ -23,6 +23,7 @@ namespace ui
         int   cachedWave = -1;
         float cachedPos  = -1.0f;
         dsp::Wavetable cachedTable;
+        float animPhase  = 0.0f;   // NUEVO: fase decorativa 0..1
     };
 
     class EnvelopeDisplay : public juce::Component,
@@ -57,6 +58,7 @@ namespace ui
         juce::AudioProcessorValueTreeState& apvtsRef;
         juce::String waveId;
         int cachedWave = -1;
+        float animPhase = 0.0f;   // NUEVO: fase decorativa 0..1
     };
 
     class LevelMeter : public juce::Component, private juce::Timer
@@ -70,7 +72,6 @@ namespace ui
         float smoothed = 0.0f;
     };
 
-    // Meter horizontal simple (mono). Usado para GR.
     class HorizontalMeter : public juce::Component, private juce::Timer
     {
     public:
@@ -87,7 +88,6 @@ namespace ui
         float smoothed = 0.0f;
     };
 
-    // Meter horizontal estéreo (2 barras). Usado para el master.
     class StereoHorizontalMeter : public juce::Component, private juce::Timer
     {
     public:
