@@ -5,9 +5,6 @@
 
 namespace ui
 {
-    // ============================================================
-    // WavetablePreview
-    // ============================================================
     class WavetablePreview : public juce::Component,
                              private juce::Timer
     {
@@ -28,9 +25,6 @@ namespace ui
         dsp::Wavetable cachedTable;
     };
 
-    // ============================================================
-    // EnvelopeDisplay
-    // ============================================================
     class EnvelopeDisplay : public juce::Component,
                             private juce::Timer
     {
@@ -49,9 +43,6 @@ namespace ui
         float cachedA = -1, cachedD = -1, cachedS = -1, cachedR = -1;
     };
 
-    // ============================================================
-    // LFODisplay
-    // ============================================================
     class LFODisplay : public juce::Component,
                        private juce::Timer
     {
@@ -68,9 +59,6 @@ namespace ui
         int cachedWave = -1;
     };
 
-    // ============================================================
-    // LevelMeter (vertical, original)
-    // ============================================================
     class LevelMeter : public juce::Component, private juce::Timer
     {
     public:
@@ -82,12 +70,7 @@ namespace ui
         float smoothed = 0.0f;
     };
 
-    // ============================================================
-    // HorizontalMeter (FASE 7.1a)
-    // Barra horizontal. Modo normal: fill de izquierda a derecha.
-    // Modo GR (gain reduction): fill de izquierda a derecha, pero
-    // el valor representa reducción (0 = sin reducción, 1 = -30 dB).
-    // ============================================================
+    // Meter horizontal simple (mono). Usado para GR.
     class HorizontalMeter : public juce::Component, private juce::Timer
     {
     public:
@@ -102,5 +85,23 @@ namespace ui
         juce::String label;
         bool grMode = false;
         float smoothed = 0.0f;
+    };
+
+    // Meter horizontal estéreo (2 barras). Usado para el master.
+    class StereoHorizontalMeter : public juce::Component, private juce::Timer
+    {
+    public:
+        StereoHorizontalMeter (std::atomic<float>& levelL,
+                               std::atomic<float>& levelR,
+                               const juce::String& labelText = {});
+        void paint (juce::Graphics&) override;
+    private:
+        void timerCallback() override;
+
+        std::atomic<float>& levelL;
+        std::atomic<float>& levelR;
+        juce::String label;
+        float smoothedL = 0.0f;
+        float smoothedR = 0.0f;
     };
 }
