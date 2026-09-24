@@ -566,13 +566,15 @@ bool PPGWave3Editor::EQCurveDisplay::cacheChanged (const Cache& a, const Cache& 
 
 void PPGWave3Editor::EQCurveDisplay::timerCallback()
 {
+    // Sonar siempre avanza
+    sonarPhase += 0.0133f;
+    if (sonarPhase >= 1.0f) sonarPhase -= 1.0f;
+
+    // FASE 12: repintamos SIEMPRE para que el analizador se mueva en tiempo real.
     const auto now = readParams();
-    if (! hasCached || cacheChanged (now, cached))
-    {
-        cached = now;
-        hasCached = true;
-        repaint();
-    }
+    cached = now;
+    hasCached = true;
+    repaint();
 }
 
 void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
@@ -731,11 +733,14 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
         const float y = midY - (juce::jlimit (-dbRange, dbRange, m.gain) / dbRange)
                               * (r.getHeight() * 0.45f);
 
-        g.setColour (juce::Colour (0xffffcc55));
+                g.setColour (juce::Colour (0xffffcc55));
         g.fillEllipse (x - 2.5f, y - 2.5f, 5.0f, 5.0f);
         g.setColour (juce::Colour (0xff151515));
         g.drawEllipse (x - 2.5f, y - 2.5f, 5.0f, 5.0f, 1.0f);
     }
+
+    // FASE 12: overlay sonar al final
+    ui::drawSonarOverlay (g, r, sonarPhase);
 }
 
 // ==================== FxTab ====================
