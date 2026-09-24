@@ -5,6 +5,13 @@
 
 namespace ui
 {
+    // ===== FASE 12: efecto overlay tipo sonar =====
+    // Dibuja un barrido dorado (~15% alpha) que se mueve horizontalmente.
+    // phase: 0..1, posición del barrido.
+    void drawSonarOverlay (juce::Graphics& g,
+                           juce::Rectangle<float> area,
+                           float phase);
+
     class WavetablePreview : public juce::Component,
                              private juce::Timer
     {
@@ -15,8 +22,6 @@ namespace ui
         ~WavetablePreview() override;
         void paint (juce::Graphics&) override;
 
-        // FASE 12: si se setea, la animación sigue la fase real del motor.
-        // Si es nullptr, cae al modo decorativo (7.3a).
         void setPhaseSource (std::atomic<float>* phaseSource) { phasePtr = phaseSource; }
 
     private:
@@ -29,8 +34,9 @@ namespace ui
         float cachedPos  = -1.0f;
         dsp::Wavetable cachedTable;
         float animPhase  = 0.0f;
+        float sonarPhase = 0.0f;   // NUEVO
 
-        std::atomic<float>* phasePtr = nullptr;   // NUEVO
+        std::atomic<float>* phasePtr = nullptr;
     };
 
     class EnvelopeDisplay : public juce::Component,
@@ -49,6 +55,7 @@ namespace ui
         juce::String attackId, decayId, sustainId, releaseId;
 
         float cachedA = -1, cachedD = -1, cachedS = -1, cachedR = -1;
+        float sonarPhase = 0.0f;   // NUEVO
     };
 
     class LFODisplay : public juce::Component,
@@ -69,8 +76,9 @@ namespace ui
         juce::String waveId;
         int cachedWave = -1;
         float animPhase = 0.0f;
+        float sonarPhase = 0.0f;   // NUEVO
 
-        std::atomic<float>* phasePtr = nullptr;   // NUEVO
+        std::atomic<float>* phasePtr = nullptr;
     };
 
     class LevelMeter : public juce::Component, private juce::Timer
