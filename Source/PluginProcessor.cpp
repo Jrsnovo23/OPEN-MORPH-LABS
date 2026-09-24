@@ -29,7 +29,6 @@ void PPGWave3Processor::prepareToPlay (double sampleRate, int samplesPerBlock)
     effects.prepare (sampleRate, samplesPerBlock, 2);
 
     // Resetear el analizador de espectro
-    fft.reset();
     fftFifoIndex.store (0);
     std::fill (fftFifo.begin(), fftFifo.end(), 0.0f);
     std::fill (fftBuffer.begin(), fftBuffer.end(), 0.0f);
