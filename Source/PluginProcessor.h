@@ -1,7 +1,9 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
+#include <juce_dsp/juce_dsp.h>
 #include <atomic>
+#include <array>
 #include "DSP/Effects.h"
 
 class PPGWave3Processor : public juce::AudioProcessor
@@ -48,9 +50,41 @@ public:
     std::atomic<float> pitchBendAtomic { 0.0f };
     std::atomic<float> modWheelAtomic  { 0.0f };
 
+    // ===== FASE 12: fases actuales para visualizadores =====
+    std::atomic<float> osc1Phase { 0.0f };
+    std::atomic<float> osc2Phase { 0.0f };
+    std::atomic<float> lfo1Phase { 0.0f };
+    std::atomic<float> lfo2Phase { 0.0f };
+
+    // ===== FASE 12: analizador de espectro =====
+    static constexpr int fftOrder        = 11;                 // 2^11 = 2048
+    static constexpr int fftSize         = 1 << fftOrder;      // 2048
+    static constexpr int fftBins         = fftSize / 2;        // 1024
+    static constexpr int numSpectrumBins = 128;                // bins para la UI
+
+    // Devuelve la magnitud en dB del bin i (0..127).
+    // Rango aprox: -90 dB (silencio) a 0 dB (full scale).
+    float getSpectrumMagnitude (int bin) const noexcept
+    {
+        if (bin < 0 || bin >= numSpectrumBins) return -90.0f;
+        return spectrumMagnitudes[(size_t) bin].load();
+    }
+
 private:
     juce::Synthesiser synth;
     dsp::Effects effects;
+
+    // --- FFT infrastructure ---
+    juce::dsp::FFT fft { fftOrder };
+    juce::dsp::WindowingFunction<float> window {
+        (size_t) fftSize, juce::dsp::WindowingFunction<float>::hann
+    };
+    std::array<float, fftSize>     fftFifo   {};
+    std::array<float, fftSize * 2> fftBuffer {};
+    std::atomic<int> fftFifoIndex { 0 };
+    std::array<std::atomic<float>, numSpectrumBins> spectrumMagnitudes {};
+
+    double currentSampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PPGWave3Processor)
 };
