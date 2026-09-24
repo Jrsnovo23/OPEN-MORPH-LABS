@@ -217,7 +217,7 @@ void PPGWave3Editor::HSlider::setScale (float s)
 
 void PPGWave3Editor::HSlider::resized()
 {
-    slider.setBounds (getLocalBounds().reduced (2, 4));
+    slider.setBounds (getLocalBounds().reduced (2, 0));
 }
 
 void PPGWave3Editor::HSlider::paint (juce::Graphics&) {}
@@ -1908,18 +1908,23 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
 
-        const int rowH = 50;
+                const int rowH = 50;
 
         auto layoutRow = [&] (juce::Rectangle<int> row,
                               ComboBoxSelector& src, ComboBoxSelector& dst, HSlider& amt)
         {
-            const int srcW = (int) ((float) row.getWidth() * 0.34f);
-            const int dstW = (int) ((float) row.getWidth() * 0.34f);
+            const int srcW = (int) ((float) row.getWidth() * 0.30f);
+            const int dstW = (int) ((float) row.getWidth() * 0.30f);
             src.setBounds (row.removeFromLeft (srcW).reduced (1, 3));
             dst.setBounds (row.removeFromLeft (dstW).reduced (1, 3));
-            amt.setBounds (row.reduced (1, 3));
-        };
 
+            // Alinear el fader verticalmente con la caja del ComboBox
+            // (saltar la zona del label "SRC"/"DST" que hay encima)
+            const int labelH = juce::jmax (9, juce::roundToInt (11.0f * currentScale));
+            auto amtArea = row.reduced (1, 3);
+            amtArea.removeFromTop (labelH);
+            amt.setBounds (amtArea);
+        };
         layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
         layoutRow (inner.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
         layoutRow (inner.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
