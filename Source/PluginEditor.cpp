@@ -2171,42 +2171,6 @@ void PPGWave3Editor::resized()
         }
     }
 
-        // -------- ARPEGGIATOR (mitad derecha) --------
-        {
-            auto col = arpArea.reduced (8, 0);
-
-            // Fila 1: ARP + LATCH
-            auto row1 = col.removeFromTop (26);
-            arpOnOffBtn.setBounds (row1.removeFromLeft (90));
-            row1.removeFromLeft (6);
-            arpLatchBtn.setBounds (row1);
-            col.removeFromTop (8);
-
-            // Fila 2: MODE
-            arpModeCombo.setBounds (col.removeFromTop (24));
-            col.removeFromTop (6);
-
-            // Fila 3: OCTAVES + RATE (dos columnas)
-            {
-                auto row = col.removeFromTop (24);
-                const int half = row.getWidth() / 2 - 3;
-                arpOctCombo.setBounds (row.removeFromLeft (half));
-                row.removeFromLeft (6);
-                arpRateCombo.setBounds (row);
-                col.removeFromTop (8);
-            }
-
-            // Fila 4: GATE (label + slider en la misma fila)
-            {
-                auto row = col.removeFromTop (24);
-                juce::Label gateLabel;
-                // Solo estilo, no añadimos componente. En su lugar, dejamos el slider con label manual en paint().
-                // Para simplificar, el GATE slider ocupa todo el ancho.
-                arpGateSlider.setBounds (row);
-            }
-        }
-    }
-
     // Fila superior: 6 columnas
     {
         const int colGap = 6;
