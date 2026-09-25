@@ -263,12 +263,12 @@ void Arpeggiator::process (double bpm,
     // 6) Disparar nuevo NoteOn
     const float vel = 0.85f;
 
-    Event on;
-    on.type = Event::NoteOn;
-    on.sampleOffset = sampleOffset;
-    on.midiNote = midiNote;
-    on.velocity = vel;
-    outEvents.push_back (on);
+    Event noteOn;
+    noteOn.type = Event::NoteOn;
+    noteOn.sampleOffset = sampleOffset;
+    noteOn.midiNote = midiNote;
+    noteOn.velocity = vel;
+    outEvents.push_back (noteOn);
 
     currentNote = midiNote;
 
