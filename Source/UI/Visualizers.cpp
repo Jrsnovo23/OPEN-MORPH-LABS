@@ -2,13 +2,13 @@
 
 namespace ui
 {
-    // ============ FASE 12: overlay sonar ============
+        // ============ FASE 12: overlay sonar ============
     void drawSonarOverlay (juce::Graphics& g,
                            juce::Rectangle<float> area,
                            float phase)
     {
-        // Banda estrecha dorada al 15% alpha que recorre horizontalmente.
-        const float bandW = area.getWidth() * 0.18f;
+        // Banda ancha (~40% del área) con halo suave y degradado radial.
+        const float bandW = area.getWidth() * 0.40f;
         const float cx = area.getX()
                        + phase * (area.getWidth() + 2.0f * bandW) - bandW;
 
@@ -16,7 +16,13 @@ namespace ui
             juce::Colour (0x00000000), cx - bandW, 0.0f,
             juce::Colour (0x00000000), cx + bandW, 0.0f,
             false);
-        grad.addColour (0.5, juce::Colour (0x26ffcc55));  // 0x26 = 15% alpha
+
+        // Halo difuso: pico suave en el centro, caída gradual hacia los bordes.
+        grad.addColour (0.15, juce::Colour (0x08ffcc55));   // ~3% alpha
+        grad.addColour (0.35, juce::Colour (0x18ffcc55));   // ~9% alpha
+        grad.addColour (0.50, juce::Colour (0x2affcc55));   // ~16% alpha (pico)
+        grad.addColour (0.65, juce::Colour (0x18ffcc55));   // ~9% alpha
+        grad.addColour (0.85, juce::Colour (0x08ffcc55));   // ~3% alpha
 
         g.setGradientFill (grad);
         g.fillRoundedRectangle (area, 2.0f);
