@@ -243,8 +243,9 @@ private:
                                  std::initializer_list<juce::Component*> knobs,
                                  int itemHeight);
 
-    // FASE 10: reset del secuenciador (botón CLR)
+    // FASE 10 + 13: secuenciador + arpegiador
     void  resetSequencer();
+    void  setActiveSeqLane (int lane);
 
     PPGWave3Processor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
@@ -321,7 +322,7 @@ private:
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
     RotaryKnob compKnee, compMakeup, compScAmount;
 
-            // FASE 10 + 13: secuenciador + arpegiador
+    // ===== FASE 10 + 13: secuenciador + arpegiador =====
     juce::OwnedArray<SeqStepControl> seqSteps;
 
     juce::TextButton seqOnOffBtn;
@@ -347,14 +348,6 @@ private:
     juce::Slider     arpGateSlider;
     juce::Slider     arpSwingSlider;
     juce::Label      arpGateLabel, arpSwingLabel;
-
-    // FASE 13: arpegiador
-    juce::TextButton arpOnOffBtn;
-    juce::TextButton arpLatchBtn;
-    juce::ComboBox   arpModeCombo;
-    juce::ComboBox   arpOctCombo;
-    juce::ComboBox   arpRateCombo;
-    juce::Slider     arpGateSlider;
 
     juce::MidiKeyboardComponent keyboardComponent;
     juce::Slider pitchWheelSlider;
