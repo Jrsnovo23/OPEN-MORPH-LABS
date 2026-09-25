@@ -11,11 +11,11 @@ public:
     void resized() override;
     void paint   (juce::Graphics&) override;
 
-    // Sincroniza los controles con el modelo (al cargar preset, reset, etc.).
     void refreshFromModel();
-
-    // Marca este paso como el que está sonando en este momento.
     void setPlayingStep (bool isCurrent);
+
+    // Lane activa: 0=Pitch, 1=Velocity, 2=Gate, 3=Probability
+    void setActiveLane (int lane);
 
     int getStepIndex() const noexcept { return idx; }
 
@@ -24,10 +24,10 @@ private:
 
     StepSequencer& sequencerRef;
     const int idx;
+    int activeLane = 0;
 
     juce::TextButton onOffBtn;
-    juce::Slider     pitchSlider;
-    juce::Slider     velSlider;
+    juce::Slider     valueSlider;
 
     bool isCurrentStep = false;
 };
