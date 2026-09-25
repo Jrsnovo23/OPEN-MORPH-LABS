@@ -2,6 +2,7 @@
 #include "ParameterIDs.h"
 #include "UI/PPGLookAndFeel.h"
 #include "UI/Visualizers.h"
+#include "UI/SeqStepControl.h"
 
 // ==================== InfoDisplay ====================
 
@@ -1121,7 +1122,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     for (auto* c : allKnobs)
         addAndMakeVisible (c);
 
-        setLookAndFeel (&ppgLnf);
+            setLookAndFeel (&ppgLnf);
     setResizable (false, false);
     setSize (1280, 920);
 
@@ -1131,12 +1132,116 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     lfo1Display.setPhaseSource (&p.lfo1Phase);
     lfo2Display.setPhaseSource (&p.lfo2Phase);
 
+    // ===== FASE 10: secuenciador de pasos =====
+    {
+        // Los 16 controles de paso
+        for (int i = 0; i < StepSequencer::numSteps; ++i)
+        {
+            auto* sc = new SeqStepControl (p.sequencer, i);
+            seqSteps.add (sc);
+            addAndMakeVisible (*sc);
+        }
+
+        // ON/OFF global
+        seqOnOffBtn.setButtonText ("SEQ");
+        seqOnOffBtn.setClickingTogglesState (true);
+        seqOnOffBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+        seqOnOffBtn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+        seqOnOffBtn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+        seqOnOffBtn.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        seqOnOffBtn.onClick = [this]()
+        {
+            processorRef.sequencer.enabled.store (seqOnOffBtn.getToggleState());
+        };
+        addAndMakeVisible (seqOnOffBtn);
+
+        // CLR (reset)
+        seqResetBtn.setButtonText ("CLR");
+        seqResetBtn.setColour (juce::TextButton::buttonColourId,  juce::Colour (0xff202020));
+        seqResetBtn.setColour (juce::TextButton::textColourOffId, juce::Colour (0xffcccccc));
+        seqResetBtn.onClick = [this]() { resetSequencer(); };
+        addAndMakeVisible (seqResetBtn);
+
+        // RATE
+        seqRateCombo.addItemList (
+            { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
+        seqRateCombo.setSelectedId (4, juce::dontSendNotification);   // 1/8 por defecto
+        seqRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
+        seqRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
+        seqRateCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
+        seqRateCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffffaa00));
+        seqRateCombo.onChange = [this]()
+        {
+            processorRef.sequencer.rateIndex.store (seqRateCombo.getSelectedId() - 1);
+        };
+        addAndMakeVisible (seqRateCombo);
+
+        // DIRECTION
+        seqDirCombo.addItemList ({ "FWD", "REV", "PING", "RND" }, 1);
+        seqDirCombo.setSelectedId (1, juce::dontSendNotification);
+        seqDirCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
+        seqDirCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
+        seqDirCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
+        seqDirCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffffaa00));
+        seqDirCombo.onChange = [this]()
+        {
+            processorRef.sequencer.direction.store (seqDirCombo.getSelectedId() - 1);
+        };
+        addAndMakeVisible (seqDirCombo);
+
+        // SWING
+        seqSwingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        seqSwingSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        seqSwingSlider.setRange (0.0, 1.0, 0.01);
+        seqSwingSlider.setValue (0.0, juce::dontSendNotification);
+        seqSwingSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        seqSwingSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        seqSwingSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        seqSwingSlider.onValueChange = [this]()
+        {
+            processorRef.sequencer.swing.store ((float) seqSwingSlider.getValue());
+        };
+        addAndMakeVisible (seqSwingSlider);
+
+        // LENGTH
+        seqLengthSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        seqLengthSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        seqLengthSlider.setRange (1.0, 16.0, 1.0);
+        seqLengthSlider.setValue (16.0, juce::dontSendNotification);
+        seqLengthSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        seqLengthSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        seqLengthSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        seqLengthSlider.onValueChange = [this]()
+        {
+            processorRef.sequencer.length.store ((int) seqLengthSlider.getValue());
+        };
+        addAndMakeVisible (seqLengthSlider);
+
+        // BASE NOTE
+        seqBaseNoteSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        seqBaseNoteSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        seqBaseNoteSlider.setRange (0.0, 127.0, 1.0);
+        seqBaseNoteSlider.setValue (60.0, juce::dontSendNotification);
+        seqBaseNoteSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        seqBaseNoteSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        seqBaseNoteSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        seqBaseNoteSlider.onValueChange = [this]()
+        {
+            processorRef.sequencer.baseNote.store ((int) seqBaseNoteSlider.getValue());
+        };
+        addAndMakeVisible (seqBaseNoteSlider);
+
+        // Timer para iluminar el step actual
+        startTimerHz (20);
+    }
+
     updateFxVisibility();
     updateEnvVisibility();
 }
 
 PPGWave3Editor::~PPGWave3Editor()
 {
+    stopTimer();
     setLookAndFeel (nullptr);
 }
 
@@ -1518,110 +1623,27 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    // ============ STEP SEQUENCER (preview) ============
+        // ============ STEP SEQUENCER ============
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
 
-        // Fondo
         g.setColour (juce::Colour (0xff141414));
-        g.fillRoundedRectangle (r, 4.0f);
-
-        // Borde punteado
-        {
-            juce::Path p;
-            p.addRoundedRectangle (r.reduced (0.5f), 4.0f);
-            juce::PathStrokeType stroke (1.0f, juce::PathStrokeType::curved);
-            float dashes[] = { 5.0f, 5.0f };
-            juce::Path dashedPath;
-            stroke.createDashedStroke (dashedPath, p, dashes, 2);
-            g.setColour (juce::Colour (0xff2f2f2f).withAlpha (0.8f));
-            g.strokePath (dashedPath, stroke);
-        }
-
-        // Grid de 16 pasos (preview del secuenciador futuro)
-        const int numSteps = 16;
-        const auto outer = r.reduced (10.0f, 8.0f);
-
-        const float topRowH    = 14.0f;
-        const float bottomRowH = 14.0f;
-
-        auto grid = outer;
-        auto stepNumRow = grid.removeFromTop (topRowH);
-        auto barNumRow  = grid.removeFromBottom (bottomRowH);
-
-        const float stepW = grid.getWidth() / (float) numSteps;
-
-        // Columnas verticales (más marcadas cada 4)
-        for (int i = 0; i <= numSteps; ++i)
-        {
-            const float x = grid.getX() + i * stepW;
-            const bool isBarLine = (i % 4 == 0);
-
-            g.setColour (juce::Colour (0xff262626)
-                            .withAlpha (isBarLine ? 0.90f : 0.35f));
-            const float t = isBarLine ? 1.2f : 0.7f;
-            g.fillRect (x - t * 0.5f, grid.getY(), t, grid.getHeight());
-        }
-
-        // Línea media horizontal (eje de pitch 0)
-        g.setColour (juce::Colour (0xff262626).withAlpha (0.5f));
-        g.fillRect (grid.getX(), grid.getCentreY() - 0.5f,
-                    grid.getWidth(), 1.0f);
-
-        // Números de paso (1..16) arriba
-        g.setFont (juce::Font (juce::FontOptions (8.0f * currentScale,
-                                                  juce::Font::plain)));
-        for (int i = 0; i < numSteps; ++i)
-        {
-            const float x = grid.getX() + i * stepW;
-            const bool isBarStart = (i % 4 == 0);
-            g.setColour (isBarStart ? juce::Colour (0xffffaa00).withAlpha (0.75f)
-                                    : juce::Colour (0xff4a4a4a));
-            g.drawText (juce::String (i + 1),
-                        (int) x, (int) stepNumRow.getY(),
-                        (int) stepW, (int) stepNumRow.getHeight(),
-                        juce::Justification::centred);
-        }
-
-        // Números de compás (1..4) abajo
-        g.setFont (juce::Font (juce::FontOptions (9.0f * currentScale,
-                                                  juce::Font::bold)));
-        for (int bar = 0; bar < 4; ++bar)
-        {
-            const float x = grid.getX() + bar * 4 * stepW;
-            g.setColour (juce::Colour (0xffffaa00).withAlpha (0.55f));
-            g.drawText (juce::String (bar + 1),
-                        (int) x, (int) barNumRow.getY(),
-                        (int) (stepW * 4), (int) barNumRow.getHeight(),
-                        juce::Justification::centred);
-        }
-
-        // Texto central tenue (por encima del grid)
-        g.setColour (juce::Colour (0xff3a3a3a));
-        g.setFont (juce::Font (juce::FontOptions (10.0f * currentScale,
-                                                  juce::Font::italic)));
-        g.drawText ("RESERVED FOR STEP SEQUENCER  -  future phase",
-                    seqReservedArea, juce::Justification::centred);
-    }
-
-    // Columnas de efectos
-    for (int i = 0; i < 8; ++i)
-        drawBox (g, fxColumnAreas[i]);
-
-    // Teclado
-    if (! keyboardArea.isEmpty())
-    {
-        const auto r = keyboardArea.toFloat();
-        juce::ColourGradient grad (juce::Colour (0xff1c1c1c), r.getX(), r.getY(),
-                                   juce::Colour (0xff151515), r.getX(), r.getBottom(), false);
-        g.setGradientFill (grad);
         g.fillRoundedRectangle (r, 4.0f);
 
         g.setColour (juce::Colour (0xff2f2f2f));
         g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
+
+        // Título de la sección
+        g.setColour (PPGLookAndFeel::accent());
+        g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
+        g.drawText ("STEP SEQUENCER",
+                    seqReservedArea.getX() + 10, seqReservedArea.getY() + 3,
+                    220, 14, juce::Justification::centredLeft);
+
+        g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
+        g.fillRect (seqReservedArea.getX() + 10, seqReservedArea.getY() + 16, 200, 1);
     }
-}
 
 void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                                   const juce::String& title) const
@@ -1684,6 +1706,20 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 
 // ==================== Helpers ====================
 
+void PPGWave3Editor::timerCallback()
+{
+    // Solo refrescamos los controles de paso si el secuenciador está activo.
+    if (! processorRef.sequencer.enabled.load())
+    {
+        for (auto* sc : seqSteps)
+            sc->setPlayingStep (false);
+        return;
+    }
+
+    const int cur = processorRef.sequencer.currentStep.load();
+    for (int i = 0; i < seqSteps.size(); ++i)
+        seqSteps[i]->setPlayingStep (i == cur);
+}
 void PPGWave3Editor::layoutKnobStack (juce::Rectangle<int> col,
                                       std::initializer_list<juce::Component*> knobs,
                                       int itemHeight)
@@ -1724,13 +1760,6 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
     for (int i = 0; i < n; ++i)
         arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
-
-// ==================== resized ====================
-
-void PPGWave3Editor::resized()
-{
-    currentScale = computeScale();
-    applyScaleToAll (currentScale);
 
     auto r = getLocalBounds();
 
