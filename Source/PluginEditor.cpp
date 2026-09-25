@@ -1219,11 +1219,99 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         seqBaseNoteSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
         seqBaseNoteSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
         seqBaseNoteSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
-        seqBaseNoteSlider.onValueChange = [this]()
+                seqBaseNoteSlider.onValueChange = [this]()
         {
             processorRef.sequencer.baseNote.store ((int) seqBaseNoteSlider.getValue());
         };
         addAndMakeVisible (seqBaseNoteSlider);
+
+        // Labels para los sliders horizontales del secuenciador
+        auto styleLabel = [&] (juce::Label& lbl, const juce::String& text)
+        {
+            lbl.setText (text, juce::dontSendNotification);
+            lbl.setJustificationType (juce::Justification::centredRight);
+            lbl.setColour (juce::Label::textColourId, juce::Colour (0xff888888));
+            lbl.setFont (juce::FontOptions (8.5f, juce::Font::bold));
+            addAndMakeVisible (lbl);
+        };
+        styleLabel (seqSwingLabel,    "SWING");
+        styleLabel (seqLengthLabel,   "LEN");
+        styleLabel (seqBaseNoteLabel, "ROOT");
+
+        // ===== FASE 13: arpegiador =====
+        arpOnOffBtn.setButtonText ("ARP");
+        arpOnOffBtn.setClickingTogglesState (true);
+        arpOnOffBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+        arpOnOffBtn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+        arpOnOffBtn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+        arpOnOffBtn.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        arpOnOffBtn.onClick = [this]()
+        {
+            processorRef.arpeggiator.enabled.store (arpOnOffBtn.getToggleState());
+        };
+        addAndMakeVisible (arpOnOffBtn);
+
+        arpLatchBtn.setButtonText ("LATCH");
+        arpLatchBtn.setClickingTogglesState (true);
+        arpLatchBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+        arpLatchBtn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+        arpLatchBtn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+        arpLatchBtn.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        arpLatchBtn.onClick = [this]()
+        {
+            processorRef.arpeggiator.latch.store (arpLatchBtn.getToggleState());
+        };
+        addAndMakeVisible (arpLatchBtn);
+
+        arpModeCombo.addItemList ({ "UP", "DOWN", "UP/DOWN", "RANDOM" }, 1);
+        arpModeCombo.setSelectedId (1, juce::dontSendNotification);
+        arpModeCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
+        arpModeCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
+        arpModeCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
+        arpModeCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffffaa00));
+        arpModeCombo.onChange = [this]()
+        {
+            processorRef.arpeggiator.mode.store (arpModeCombo.getSelectedId() - 1);
+        };
+        addAndMakeVisible (arpModeCombo);
+
+        arpOctCombo.addItemList ({ "1", "2", "3", "4" }, 1);
+        arpOctCombo.setSelectedId (1, juce::dontSendNotification);
+        arpOctCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
+        arpOctCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
+        arpOctCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
+        arpOctCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffffaa00));
+        arpOctCombo.onChange = [this]()
+        {
+            processorRef.arpeggiator.octaves.store (arpOctCombo.getSelectedId());
+        };
+        addAndMakeVisible (arpOctCombo);
+
+        arpRateCombo.addItemList (
+            { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
+        arpRateCombo.setSelectedId (5, juce::dontSendNotification);   // 1/16
+        arpRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
+        arpRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
+        arpRateCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
+        arpRateCombo.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffffaa00));
+        arpRateCombo.onChange = [this]()
+        {
+            processorRef.arpeggiator.rateIndex.store (arpRateCombo.getSelectedId() - 1);
+        };
+        addAndMakeVisible (arpRateCombo);
+
+        arpGateSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        arpGateSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        arpGateSlider.setRange (0.1, 1.0, 0.01);
+        arpGateSlider.setValue (0.5, juce::dontSendNotification);
+        arpGateSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        arpGateSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        arpGateSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        arpGateSlider.onValueChange = [this]()
+        {
+            processorRef.arpeggiator.gate.store ((float) arpGateSlider.getValue());
+        };
+        addAndMakeVisible (arpGateSlider);
 
         startTimerHz (20);
     }
@@ -1634,7 +1722,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-    // ============ STEP SEQUENCER ============
+        // ============ STEP SEQUENCER + ARPEGGIATOR ============
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
@@ -1645,7 +1733,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.setColour (juce::Colour (0xff2f2f2f));
         g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
 
-        // Título de la sección
+        // Título STEP SEQUENCER (mitad izquierda)
         g.setColour (PPGLookAndFeel::accent());
         g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
         g.drawText ("STEP SEQUENCER",
@@ -1654,6 +1742,31 @@ void PPGWave3Editor::paint (juce::Graphics& g)
 
         g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
         g.fillRect (seqReservedArea.getX() + 10, seqReservedArea.getY() + 16, 200, 1);
+
+        // Título ARPEGGIATOR (mitad derecha)
+        const int halfW = seqReservedArea.getWidth() / 2;
+        const int arpTitleX = seqReservedArea.getX() + halfW + 10;
+
+        g.setColour (PPGLookAndFeel::accent());
+        g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
+        g.drawText ("ARPEGGIATOR",
+                    arpTitleX, seqReservedArea.getY() + 3,
+                    220, 14, juce::Justification::centredLeft);
+
+        g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
+        g.fillRect (arpTitleX, seqReservedArea.getY() + 16, 200, 1);
+
+        // Línea vertical separadora entre las dos mitades
+        const int divX = seqReservedArea.getX() + halfW;
+        g.setColour (juce::Colour (0xff2f2f2f));
+        g.fillRect (divX, seqReservedArea.getY() + 26, 1,
+                    seqReservedArea.getHeight() - 36);
+
+        // Label "GATE" para el slider del arpegiador
+        g.setColour (juce::Colour (0xff888888));
+        g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
+        g.drawText ("GATE", arpTitleX, seqReservedArea.getBottom() - 40,
+                    40, 12, juce::Justification::centredLeft);
     }
 
     // Columnas de efectos
@@ -1893,54 +2006,108 @@ void PPGWave3Editor::resized()
     seqReservedArea = seqRow;
     fxArea = fxRow;
 
-    // ===== FASE 10: layout del secuenciador =====
-    if (seqSteps.size() == StepSequencer::numSteps)
+        // ===== FASE 10 + 13: layout secuenciador (mitad izq) + arpegiador (mitad der) =====
     {
-        auto seqArea = seqReservedArea.reduced (10, 22);
+        auto halfArea = seqReservedArea.reduced (10, 22);
 
-        // Columna izquierda: controles globales (~200px)
-        auto controlsCol = seqArea.removeFromLeft (200);
-        controlsCol.removeFromRight (10);
+        // Mitad derecha para el arpegiador
+        const int halfW = halfArea.getWidth() / 2;
+        auto arpArea = halfArea.removeFromRight (halfW);
 
-        auto row1 = controlsCol.removeFromTop (26);
-        seqOnOffBtn.setBounds (row1.removeFromLeft (100));
-        row1.removeFromLeft (8);
-        seqResetBtn.setBounds (row1);
-        controlsCol.removeFromTop (6);
+        // La mitad izquierda se queda con el secuenciador
+        auto seqArea = halfArea;
+        seqArea.removeFromRight (6);   // pequeño gap entre las dos mitades
 
-        // RATE
-        controlsCol.removeFromTop (8);
-        seqRateCombo.setBounds (controlsCol.removeFromTop (24));
-        controlsCol.removeFromTop (6);
-
-        // DIRECTION
-        controlsCol.removeFromTop (8);
-        seqDirCombo.setBounds (controlsCol.removeFromTop (24));
-        controlsCol.removeFromTop (8);
-
-        // SWING
-        controlsCol.removeFromTop (10);
-        seqSwingSlider.setBounds (controlsCol.removeFromTop (22));
-        controlsCol.removeFromTop (6);
-
-        // LENGTH
-        controlsCol.removeFromTop (10);
-        seqLengthSlider.setBounds (controlsCol.removeFromTop (22));
-        controlsCol.removeFromTop (6);
-
-        // BASE NOTE
-        controlsCol.removeFromTop (10);
-        seqBaseNoteSlider.setBounds (controlsCol.removeFromTop (22));
-
-        // 16 pasos en el resto del ancho
-        const int stepW = seqArea.getWidth() / StepSequencer::numSteps;
-        const int stepGap = 2;
-
-        for (int i = 0; i < StepSequencer::numSteps; ++i)
+        // -------- STEP SEQUENCER (mitad izquierda) --------
+        if (seqSteps.size() == StepSequencer::numSteps)
         {
-            const int x = seqArea.getX() + i * stepW;
-            seqSteps[i]->setBounds (x, seqArea.getY(),
-                                    stepW - stepGap, seqArea.getHeight());
+            auto controlsCol = seqArea.removeFromLeft (150);
+            controlsCol.removeFromRight (8);
+
+            auto row1 = controlsCol.removeFromTop (24);
+            seqOnOffBtn.setBounds (row1.removeFromLeft (72));
+            row1.removeFromLeft (6);
+            seqResetBtn.setBounds (row1);
+            controlsCol.removeFromTop (6);
+
+            // RATE
+            controlsCol.removeFromTop (6);
+            seqRateCombo.setBounds (controlsCol.removeFromTop (22));
+            controlsCol.removeFromTop (6);
+
+            // DIRECTION
+            controlsCol.removeFromTop (6);
+            seqDirCombo.setBounds (controlsCol.removeFromTop (22));
+            controlsCol.removeFromTop (8);
+
+            // SWING (label + slider en la misma fila)
+            {
+                auto row = controlsCol.removeFromTop (22);
+                seqSwingLabel.setBounds (row.removeFromLeft (40));
+                seqSwingSlider.setBounds (row);
+                controlsCol.removeFromTop (4);
+            }
+
+            // LENGTH
+            {
+                auto row = controlsCol.removeFromTop (22);
+                seqLengthLabel.setBounds (row.removeFromLeft (40));
+                seqLengthSlider.setBounds (row);
+                controlsCol.removeFromTop (4);
+            }
+
+            // BASE NOTE
+            {
+                auto row = controlsCol.removeFromTop (22);
+                seqBaseNoteLabel.setBounds (row.removeFromLeft (40));
+                seqBaseNoteSlider.setBounds (row);
+            }
+
+            // 16 pasos en el resto del ancho
+            const int stepW = seqArea.getWidth() / StepSequencer::numSteps;
+            const int stepGap = 1;
+
+            for (int i = 0; i < StepSequencer::numSteps; ++i)
+            {
+                const int x = seqArea.getX() + i * stepW;
+                seqSteps[i]->setBounds (x, seqArea.getY(),
+                                        stepW - stepGap, seqArea.getHeight());
+            }
+        }
+
+        // -------- ARPEGGIATOR (mitad derecha) --------
+        {
+            auto col = arpArea.reduced (8, 0);
+
+            // Fila 1: ARP + LATCH
+            auto row1 = col.removeFromTop (26);
+            arpOnOffBtn.setBounds (row1.removeFromLeft (90));
+            row1.removeFromLeft (6);
+            arpLatchBtn.setBounds (row1);
+            col.removeFromTop (8);
+
+            // Fila 2: MODE
+            arpModeCombo.setBounds (col.removeFromTop (24));
+            col.removeFromTop (6);
+
+            // Fila 3: OCTAVES + RATE (dos columnas)
+            {
+                auto row = col.removeFromTop (24);
+                const int half = row.getWidth() / 2 - 3;
+                arpOctCombo.setBounds (row.removeFromLeft (half));
+                row.removeFromLeft (6);
+                arpRateCombo.setBounds (row);
+                col.removeFromTop (8);
+            }
+
+            // Fila 4: GATE (label + slider en la misma fila)
+            {
+                auto row = col.removeFromTop (24);
+                juce::Label gateLabel;
+                // Solo estilo, no añadimos componente. En su lugar, dejamos el slider con label manual en paint().
+                // Para simplificar, el GATE slider ocupa todo el ancho.
+                arpGateSlider.setBounds (row);
+            }
         }
     }
 
