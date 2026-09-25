@@ -1899,6 +1899,56 @@ void PPGWave3Editor::resized()
     seqReservedArea = seqRow;
     fxArea = fxRow;
 
+        // ===== FASE 10: layout del secuenciador =====
+    {
+        auto seqArea = seqReservedArea.reduced (10, 22);   // deja sitio para el título
+
+        // Columna izquierda: controles globales (~200px)
+        auto controlsCol = seqArea.removeFromLeft (200);
+        controlsCol.removeFromRight (10);
+
+        auto row1 = controlsCol.removeFromTop (26);
+        seqOnOffBtn.setBounds (row1.removeFromLeft (100));
+        row1.removeFromLeft (8);
+        seqResetBtn.setBounds (row1);
+        controlsCol.removeFromTop (6);
+
+        // RATE
+        controlsCol.removeFromTop (8);
+        seqRateCombo.setBounds (controlsCol.removeFromTop (24));
+        controlsCol.removeFromTop (6);
+
+        // DIRECTION
+        controlsCol.removeFromTop (8);
+        seqDirCombo.setBounds (controlsCol.removeFromTop (24));
+        controlsCol.removeFromTop (8);
+
+        // SWING
+        controlsCol.removeFromTop (10);
+        seqSwingSlider.setBounds (controlsCol.removeFromTop (22));
+        controlsCol.removeFromTop (6);
+
+        // LENGTH
+        controlsCol.removeFromTop (10);
+        seqLengthSlider.setBounds (controlsCol.removeFromTop (22));
+        controlsCol.removeFromTop (6);
+
+        // BASE NOTE
+        controlsCol.removeFromTop (10);
+        seqBaseNoteSlider.setBounds (controlsCol.removeFromTop (22));
+
+        // 16 pasos en el resto del ancho
+        const int stepW = seqArea.getWidth() / StepSequencer::numSteps;
+        const int stepGap = 2;
+
+        for (int i = 0; i < StepSequencer::numSteps; ++i)
+        {
+            const int x = seqArea.getX() + i * stepW;
+            seqSteps[i]->setBounds (x, seqArea.getY(),
+                                    stepW - stepGap, seqArea.getHeight());
+        }
+    }
+    
     // Fila superior: 6 columnas
     {
         const int colGap = 6;
