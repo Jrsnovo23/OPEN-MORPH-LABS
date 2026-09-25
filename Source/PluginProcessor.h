@@ -7,6 +7,7 @@
 #include <vector>
 #include "DSP/Effects.h"
 #include "DSP/StepSequencer.h"
+#include "DSP/Arpeggiator.h"
 
 class PPGWave3Processor : public juce::AudioProcessor
 {
@@ -55,8 +56,11 @@ public:
     std::atomic<float> lfo1Phase { 0.0f };
     std::atomic<float> lfo2Phase { 0.0f };
 
-    // Fase 10: secuenciador de pasos
+    // Fase 10: secuenciador
     StepSequencer sequencer;
+
+    // Fase 13: arpegiador
+    Arpeggiator arpeggiator;
 
     // Fase 12: analizador de espectro
     static constexpr int fftOrder        = 11;
