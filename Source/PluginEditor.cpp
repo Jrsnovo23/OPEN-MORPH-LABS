@@ -1782,6 +1782,12 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
         arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
 
+// ==================== resized ====================
+
+void PPGWave3Editor::resized()
+{
+    currentScale = computeScale();
+    applyScaleToAll (currentScale);
 
     auto r = getLocalBounds();
 
