@@ -4,7 +4,9 @@
 #include <juce_dsp/juce_dsp.h>
 #include <atomic>
 #include <array>
+#include <vector>
 #include "DSP/Effects.h"
+#include "DSP/StepSequencer.h"
 
 class PPGWave3Processor : public juce::AudioProcessor
 {
@@ -39,31 +41,29 @@ public:
 
     std::atomic<double> currentBpm { 120.0 };
 
-    // Nivel de pico por canal (para el VU meter estéreo).
     std::atomic<float> peakLevelL { 0.0f };
     std::atomic<float> peakLevelR { 0.0f };
-
-    // Gain reduction del compresor (mono).
     std::atomic<float> compressorGR { 0.0f };
 
     juce::MidiKeyboardState keyboardState;
     std::atomic<float> pitchBendAtomic { 0.0f };
     std::atomic<float> modWheelAtomic  { 0.0f };
 
-    // ===== FASE 12: fases actuales para visualizadores =====
+    // Fase 12: fases actuales para visualizadores
     std::atomic<float> osc1Phase { 0.0f };
     std::atomic<float> osc2Phase { 0.0f };
     std::atomic<float> lfo1Phase { 0.0f };
     std::atomic<float> lfo2Phase { 0.0f };
 
-    // ===== FASE 12: analizador de espectro =====
-    static constexpr int fftOrder        = 11;                 // 2^11 = 2048
-    static constexpr int fftSize         = 1 << fftOrder;      // 2048
-    static constexpr int fftBins         = fftSize / 2;        // 1024
-    static constexpr int numSpectrumBins = 128;                // bins para la UI
+    // Fase 10: secuenciador de pasos
+    StepSequencer sequencer;
 
-    // Devuelve la magnitud en dB del bin i (0..127).
-    // Rango aprox: -90 dB (silencio) a 0 dB (full scale).
+    // Fase 12: analizador de espectro
+    static constexpr int fftOrder        = 11;
+    static constexpr int fftSize         = 1 << fftOrder;
+    static constexpr int fftBins         = fftSize / 2;
+    static constexpr int numSpectrumBins = 128;
+
     float getSpectrumMagnitude (int bin) const noexcept
     {
         if (bin < 0 || bin >= numSpectrumBins) return -90.0f;
@@ -74,7 +74,6 @@ private:
     juce::Synthesiser synth;
     dsp::Effects effects;
 
-    // --- FFT infrastructure ---
     juce::dsp::FFT fft { fftOrder };
     juce::dsp::WindowingFunction<float> window {
         (size_t) fftSize, juce::dsp::WindowingFunction<float>::hann
