@@ -3,9 +3,11 @@
 #include "PluginProcessor.h"
 #include "UI/PPGLookAndFeel.h"
 #include "UI/Visualizers.h"
+#include "UI/SeqStepControl.h"
 #include "Presets/PresetManager.h"
 
-class PPGWave3Editor : public juce::AudioProcessorEditor
+class PPGWave3Editor : public juce::AudioProcessorEditor,
+                       private juce::Timer
 {
 public:
     explicit PPGWave3Editor (PPGWave3Processor&);
@@ -15,6 +17,8 @@ public:
     void resized () override;
 
 private:
+    void timerCallback() override;
+
     class InfoDisplay : public juce::Component
     {
     public:
@@ -39,8 +43,8 @@ private:
         void setScale (float s);
     private:
         juce::Slider  slider;
-        juce::Label   label;         // nombre del parámetro
-        ValueBoxLabel valueLabel;    // valor numérico (nuevo)
+        juce::Label   label;
+        ValueBoxLabel valueLabel;
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
@@ -142,7 +146,7 @@ private:
         juce::StringArray ids;
         juce::Slider  slider;
         juce::Label   label;
-        ValueBoxLabel valueLabel;    // valor numérico (nuevo)
+        ValueBoxLabel valueLabel;
         InfoDisplay*  infoDisplay = nullptr;
         juce::String  paramName;
         int           activeBand = 0;
@@ -150,7 +154,7 @@ private:
         float         scale = 1.0f;
     };
 
-                class EQCurveDisplay : public juce::Component,
+    class EQCurveDisplay : public juce::Component,
                            private juce::Timer
     {
     public:
@@ -176,7 +180,7 @@ private:
         Cache cached;
         bool  hasCached = false;
         float scale = 1.0f;
-        float sonarPhase = 0.0f;   // NUEVO
+        float sonarPhase = 0.0f;
     };
 
     class PresetDisplay : public juce::Component
@@ -238,6 +242,9 @@ private:
     void  layoutKnobStackBottom (juce::Rectangle<int> col,
                                  std::initializer_list<juce::Component*> knobs,
                                  int itemHeight);
+
+    // FASE 10: reset del secuenciador (botón CLR)
+    void  resetSequencer();
 
     PPGWave3Processor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
@@ -313,6 +320,17 @@ private:
     std::unique_ptr<ToggleButton> compSidechain;
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
     RotaryKnob compKnee, compMakeup, compScAmount;
+
+    // FASE 10: secuenciador de pasos
+    juce::OwnedArray<SeqStepControl> seqSteps;
+
+    juce::TextButton seqOnOffBtn;
+    juce::TextButton seqResetBtn;
+    juce::ComboBox   seqRateCombo;
+    juce::ComboBox   seqDirCombo;
+    juce::Slider     seqSwingSlider;
+    juce::Slider     seqLengthSlider;
+    juce::Slider     seqBaseNoteSlider;
 
     juce::MidiKeyboardComponent keyboardComponent;
     juce::Slider pitchWheelSlider;
