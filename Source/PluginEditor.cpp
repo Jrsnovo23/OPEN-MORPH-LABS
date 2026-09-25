@@ -1623,7 +1623,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-        // ============ STEP SEQUENCER ============
+    // ============ STEP SEQUENCER ============
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
@@ -1644,6 +1644,26 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
         g.fillRect (seqReservedArea.getX() + 10, seqReservedArea.getY() + 16, 200, 1);
     }
+
+    // Columnas de efectos
+    for (int i = 0; i < 8; ++i)
+        drawBox (g, fxColumnAreas[i]);
+
+    // Teclado
+    if (! keyboardArea.isEmpty())
+    {
+        const auto r = keyboardArea.toFloat();
+        juce::ColourGradient grad (juce::Colour (0xff1c1c1c), r.getX(), r.getY(),
+                                   juce::Colour (0xff151515), r.getX(), r.getBottom(), false);
+        g.setGradientFill (grad);
+        g.fillRoundedRectangle (r, 4.0f);
+
+        g.setColour (juce::Colour (0xff2f2f2f));
+        g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
+    }
+}
+
+// ==================== Helpers de dibujo ====================
 
 void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                                   const juce::String& title) const
@@ -1690,13 +1710,11 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 {
     if (area.isEmpty()) return;
 
-    // OML un poco más grande que antes
     const float omlSize = juce::jmax (18.0f, (float) area.getHeight() * 0.95f);
     g.setFont (juce::Font (juce::FontOptions (omlSize, juce::Font::bold)));
     g.setColour (PPGLookAndFeel::accent());
     g.drawText ("OML", area, juce::Justification::centredLeft, false);
 
-    // Barra dorada fina como separador a la derecha del logo
     const int barX = area.getRight() - 2;
     const int barY = area.getY() + 4;
     const int barH = area.getHeight() - 8;
@@ -1704,7 +1722,7 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
     g.fillRect (barX, barY, 1, barH);
 }
 
-// ==================== Helpers ====================
+// ==================== Timer ====================
 
 void PPGWave3Editor::timerCallback()
 {
@@ -1720,6 +1738,9 @@ void PPGWave3Editor::timerCallback()
     for (int i = 0; i < seqSteps.size(); ++i)
         seqSteps[i]->setPlayingStep (i == cur);
 }
+
+// ==================== Helpers de layout ====================
+
 void PPGWave3Editor::layoutKnobStack (juce::Rectangle<int> col,
                                       std::initializer_list<juce::Component*> knobs,
                                       int itemHeight)
@@ -1760,6 +1781,7 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
     for (int i = 0; i < n; ++i)
         arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
+
 
     auto r = getLocalBounds();
 
