@@ -28,15 +28,19 @@ void PPGWave3Processor::prepareToPlay (double sampleRate, int samplesPerBlock)
     synth.setCurrentPlaybackSampleRate (sampleRate);
     effects.prepare (sampleRate, samplesPerBlock, 2);
 
-    // Resetear el analizador de espectro
+    // Analizador de espectro
     fftFifoIndex.store (0);
     std::fill (fftFifo.begin(), fftFifo.end(), 0.0f);
     std::fill (fftBuffer.begin(), fftBuffer.end(), 0.0f);
     for (auto& m : spectrumMagnitudes) m.store (-90.0f);
 
-    // Resetear el secuenciador
+    // Secuenciador
     sequencer.prepare (sampleRate);
     sequencer.reset();
+
+    // Arpegiador
+    arpeggiator.prepare (sampleRate);
+    arpeggiator.reset();
 }
 
 bool PPGWave3Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -51,7 +55,6 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    // Info del host: BPM, PPQ, playing
     double ppqPos    = -1.0;
     bool   isPlaying = false;
 
@@ -79,7 +82,6 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
 
     // ---- Fase 10: secuenciador ----
-    // 1) Inyecta los eventos del secuenciador al buffer MIDI.
     {
         std::vector<StepSequencer::Event> seqEvents;
         sequencer.process (currentBpm.load(), ppqPos, isPlaying,
@@ -96,7 +98,24 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    // 2) Pitch bend y mod wheel de la UI
+    // ---- Fase 13: arpegiador ----
+    {
+        std::vector<Arpeggiator::Event> arpEvents;
+        arpeggiator.process (currentBpm.load(), ppqPos, isPlaying,
+                             buffer.getNumSamples(), keyboardState, arpEvents);
+
+        for (const auto& e : arpEvents)
+        {
+            if (e.type == Arpeggiator::Event::NoteOn)
+                midi.addEvent (juce::MidiMessage::noteOn (1, e.midiNote, e.velocity),
+                               e.sampleOffset);
+            else
+                midi.addEvent (juce::MidiMessage::noteOff (1, e.midiNote),
+                               e.sampleOffset);
+        }
+    }
+
+    // Pitch bend y mod wheel de la UI
     {
         const int pbValue = juce::jlimit (0, 16383,
             (int) std::lround (8192.0f + pitchBendAtomic.load() * 8192.0f));
@@ -205,7 +224,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     effects.process (buffer);
 
-    // ---- Fase 12: analizador de espectro ----
+    // Analizador de espectro
     {
         const int numSamples = buffer.getNumSamples();
         const int numCh      = buffer.getNumChannels();
@@ -282,11 +301,13 @@ void PPGWave3Processor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
 
-    // Reemplazar el hijo SEQUENCER si ya existía
     if (auto old = state.getChildWithName ("SEQUENCER"); old.isValid())
         state.removeChild (old, nullptr);
-
     state.addChild (sequencer.toValueTree(), -1, nullptr);
+
+    if (auto old = state.getChildWithName ("ARPEGGIATOR"); old.isValid())
+        state.removeChild (old, nullptr);
+    state.addChild (arpeggiator.toValueTree(), -1, nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -301,6 +322,7 @@ void PPGWave3Processor::setStateInformation (const void* data, int sizeInBytes)
             auto tree = juce::ValueTree::fromXml (*xml);
             apvts.replaceState (tree);
             sequencer.fromValueTree (tree.getChildWithName ("SEQUENCER"));
+            arpeggiator.fromValueTree (tree.getChildWithName ("ARPEGGIATOR"));
         }
     }
 }
