@@ -1770,12 +1770,7 @@ void PPGWave3Editor::setActiveSeqLane (int lane)
 }
 void PPGWave3Editor::resetSequencer()
 {
-    for (int i = 0; i < StepSequencer::numSteps; ++i)
-    {
-        processorRef.sequencer.steps[i].active.store   (false);
-        processorRef.sequencer.steps[i].pitch.store    (0);
-        processorRef.sequencer.steps[i].velocity.store (0.8f);
-    }
+    processorRef.sequencer.clearAll();
 
     for (auto* sc : seqSteps)
         sc->refreshFromModel();
@@ -1808,7 +1803,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     drawSection (g, lfoArea,    "LFO");
     drawSection (g, modArea,    "MOD MATRIX");
 
-        // ============ STEP SEQUENCER + ARPEGGIATOR ============
+            // ============ STEP SEQUENCER + ARPEGGIATOR ============
     if (! seqReservedArea.isEmpty())
     {
         const auto r = seqReservedArea.toFloat();
@@ -1819,7 +1814,7 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.setColour (juce::Colour (0xff2f2f2f));
         g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.0f);
 
-        // Título STEP SEQUENCER (mitad izquierda)
+        // Título STEP SEQUENCER (arriba izquierda)
         g.setColour (PPGLookAndFeel::accent());
         g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
         g.drawText ("STEP SEQUENCER",
@@ -1829,32 +1824,18 @@ void PPGWave3Editor::paint (juce::Graphics& g)
         g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
         g.fillRect (seqReservedArea.getX() + 10, seqReservedArea.getY() + 16, 200, 1);
 
-        // Título ARPEGGIATOR (mitad derecha)
-        const int halfW = seqReservedArea.getWidth() / 2;
-        const int arpTitleX = seqReservedArea.getX() + halfW + 10;
-
+        // Título ARPEGGIATOR (arriba a la derecha)
+        const int arpTitleX = seqReservedArea.getRight() - 240;
         g.setColour (PPGLookAndFeel::accent());
         g.setFont (juce::Font (juce::FontOptions (9.5f * currentScale, juce::Font::bold)));
         g.drawText ("ARPEGGIATOR",
                     arpTitleX, seqReservedArea.getY() + 3,
-                    220, 14, juce::Justification::centredLeft);
+                    220, 14, juce::Justification::centredRight);
 
         g.setColour (PPGLookAndFeel::accent().withAlpha (0.35f));
-        g.fillRect (arpTitleX, seqReservedArea.getY() + 16, 200, 1);
-
-        // Línea vertical separadora entre las dos mitades
-        const int divX = seqReservedArea.getX() + halfW;
-        g.setColour (juce::Colour (0xff2f2f2f));
-        g.fillRect (divX, seqReservedArea.getY() + 26, 1,
-                    seqReservedArea.getHeight() - 36);
-
-        // Label "GATE" para el slider del arpegiador
-        g.setColour (juce::Colour (0xff888888));
-        g.setFont (juce::FontOptions (8.5f, juce::Font::bold));
-        g.drawText ("GATE", arpTitleX, seqReservedArea.getBottom() - 40,
-                    40, 12, juce::Justification::centredLeft);
+        g.fillRect (seqReservedArea.getRight() - 210,
+                    seqReservedArea.getY() + 16, 200, 1);
     }
-
     // Columnas de efectos
     for (int i = 0; i < 8; ++i)
         drawBox (g, fxColumnAreas[i]);
@@ -2092,74 +2073,103 @@ void PPGWave3Editor::resized()
     seqReservedArea = seqRow;
     fxArea = fxRow;
 
-        // ===== FASE 10 + 13: layout secuenciador (mitad izq) + arpegiador (mitad der) =====
+            // ===== FASE 10 + 13: layout STEP SEQUENCER + ARPEGGIATOR =====
     {
-        auto halfArea = seqReservedArea.reduced (10, 22);
+        auto area = seqReservedArea.reduced (10, 22);
 
-        // Mitad derecha para el arpegiador
-        const int halfW = halfArea.getWidth() / 2;
-        auto arpArea = halfArea.removeFromRight (halfW);
+        // ---- Barra horizontal del ARPEGGIATOR (arriba, ancho completo) ----
+        auto arpBar = area.removeFromTop (50);
+        {
+            auto row = arpBar;
 
-        // La mitad izquierda se queda con el secuenciador
-        auto seqArea = halfArea;
-        seqArea.removeFromRight (6);   // pequeño gap entre las dos mitades
+            arpOnOffBtn.setBounds (row.removeFromLeft (70));
+            row.removeFromLeft (6);
+            arpLatchBtn.setBounds (row.removeFromLeft (70));
+            row.removeFromLeft (14);
 
-        // -------- STEP SEQUENCER (mitad izquierda) --------
+            arpModeCombo.setBounds (row.removeFromLeft (110));
+            row.removeFromLeft (6);
+            arpOctCombo.setBounds (row.removeFromLeft (60));
+            row.removeFromLeft (6);
+            arpRateCombo.setBounds (row.removeFromLeft (90));
+            row.removeFromLeft (14);
+
+            auto gateZone = row.removeFromLeft (140);
+            arpGateLabel.setBounds (gateZone.removeFromLeft (36));
+            arpGateSlider.setBounds (gateZone);
+            row.removeFromLeft (14);
+
+            arpSwingLabel.setBounds (row.removeFromLeft (44));
+            arpSwingSlider.setBounds (row);
+        }
+
+        area.removeFromTop (8);
+
+        // ---- Controles del STEP SEQUENCER (2 filas) ----
+        auto seqRow1 = area.removeFromTop (26);
+        {
+            seqOnOffBtn.setBounds (seqRow1.removeFromLeft (60));
+            seqRow1.removeFromLeft (4);
+            seqResetBtn.setBounds (seqRow1.removeFromLeft (60));
+            seqRow1.removeFromLeft (12);
+
+            seqRateCombo.setBounds (seqRow1.removeFromLeft (90));
+            seqRow1.removeFromLeft (4);
+            seqDirCombo.setBounds (seqRow1.removeFromLeft (90));
+            seqRow1.removeFromLeft (12);
+
+            seqRandomizeBtn.setBounds (seqRow1.removeFromLeft (50));
+            seqRow1.removeFromLeft (4);
+            seqShiftLeftBtn.setBounds (seqRow1.removeFromLeft (28));
+            seqRow1.removeFromLeft (2);
+            seqShiftRightBtn.setBounds (seqRow1.removeFromLeft (28));
+        }
+
+        area.removeFromTop (4);
+
+        auto seqRow2 = area.removeFromTop (26);
+        {
+            auto swingZone = seqRow2.removeFromLeft (140);
+            seqSwingLabel.setBounds (swingZone.removeFromLeft (40));
+            seqSwingSlider.setBounds (swingZone);
+            seqRow2.removeFromLeft (8);
+
+            auto lenZone = seqRow2.removeFromLeft (130);
+            seqLengthLabel.setBounds (lenZone.removeFromLeft (30));
+            seqLengthSlider.setBounds (lenZone);
+            seqRow2.removeFromLeft (8);
+
+            auto rootZone = seqRow2.removeFromLeft (140);
+            seqBaseNoteLabel.setBounds (rootZone.removeFromLeft (40));
+            seqBaseNoteSlider.setBounds (rootZone);
+
+            // Lane buttons a la derecha
+            const int laneBtnW = 55;
+            seqLaneProbBtn .setBounds (seqRow2.removeFromRight (laneBtnW));
+            seqRow2.removeFromRight (2);
+            seqLaneGateBtn .setBounds (seqRow2.removeFromRight (laneBtnW));
+            seqRow2.removeFromRight (2);
+            seqLaneVelBtn  .setBounds (seqRow2.removeFromRight (laneBtnW));
+            seqRow2.removeFromRight (2);
+            seqLanePitchBtn.setBounds (seqRow2.removeFromRight (laneBtnW));
+        }
+
+        area.removeFromTop (8);
+
+        // ---- Los 16 pasos ----
         if (seqSteps.size() == StepSequencer::numSteps)
         {
-            auto controlsCol = seqArea.removeFromLeft (150);
-            controlsCol.removeFromRight (8);
-
-            auto row1 = controlsCol.removeFromTop (24);
-            seqOnOffBtn.setBounds (row1.removeFromLeft (72));
-            row1.removeFromLeft (6);
-            seqResetBtn.setBounds (row1);
-            controlsCol.removeFromTop (6);
-
-            // RATE
-            controlsCol.removeFromTop (6);
-            seqRateCombo.setBounds (controlsCol.removeFromTop (22));
-            controlsCol.removeFromTop (6);
-
-            // DIRECTION
-            controlsCol.removeFromTop (6);
-            seqDirCombo.setBounds (controlsCol.removeFromTop (22));
-            controlsCol.removeFromTop (8);
-
-            // SWING (label + slider en la misma fila)
-            {
-                auto row = controlsCol.removeFromTop (22);
-                seqSwingLabel.setBounds (row.removeFromLeft (40));
-                seqSwingSlider.setBounds (row);
-                controlsCol.removeFromTop (4);
-            }
-
-            // LENGTH
-            {
-                auto row = controlsCol.removeFromTop (22);
-                seqLengthLabel.setBounds (row.removeFromLeft (40));
-                seqLengthSlider.setBounds (row);
-                controlsCol.removeFromTop (4);
-            }
-
-            // BASE NOTE
-            {
-                auto row = controlsCol.removeFromTop (22);
-                seqBaseNoteLabel.setBounds (row.removeFromLeft (40));
-                seqBaseNoteSlider.setBounds (row);
-            }
-
-            // 16 pasos en el resto del ancho
-            const int stepW = seqArea.getWidth() / StepSequencer::numSteps;
-            const int stepGap = 1;
+            const int stepW = area.getWidth() / StepSequencer::numSteps;
+            const int stepGap = 2;
 
             for (int i = 0; i < StepSequencer::numSteps; ++i)
             {
-                const int x = seqArea.getX() + i * stepW;
-                seqSteps[i]->setBounds (x, seqArea.getY(),
-                                        stepW - stepGap, seqArea.getHeight());
+                const int x = area.getX() + i * stepW;
+                seqSteps[i]->setBounds (x, area.getY(),
+                                        stepW - stepGap, area.getHeight());
             }
         }
+    }
 
         // -------- ARPEGGIATOR (mitad derecha) --------
         {
