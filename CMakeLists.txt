@@ -42,6 +42,7 @@ target_sources(PPGWave3Clone
         Source/Synth/SynthVoice.cpp
         Source/UI/PPGLookAndFeel.cpp
         Source/UI/Visualizers.cpp
+        Source/UI/SeqStepControl.cpp
         Source/Presets/PresetManager.cpp
 )
 
