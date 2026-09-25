@@ -1782,8 +1782,22 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
         arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
 
-// ==================== resized ====================
+// ==================== reset secuenciador ====================
 
+void PPGWave3Editor::resetSequencer()
+{
+    for (int i = 0; i < StepSequencer::numSteps; ++i)
+    {
+        processorRef.sequencer.steps[i].active.store   (false);
+        processorRef.sequencer.steps[i].pitch.store    (0);
+        processorRef.sequencer.steps[i].velocity.store (0.8f);
+    }
+
+    for (auto* sc : seqSteps)
+        sc->refreshFromModel();
+}
+
+// ==================== resized ====================
 void PPGWave3Editor::resized()
 {
     currentScale = computeScale();
