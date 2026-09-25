@@ -11,9 +11,11 @@ public:
 
     struct Step
     {
-        std::atomic<bool>  active   { false };
-        std::atomic<int>   pitch    { 0 };      // -24..+24 semitonos
-        std::atomic<float> velocity { 0.8f };   // 0..1
+        std::atomic<bool>  active      { false };
+        std::atomic<int>   pitch       { 0 };      // -24..+24 semitonos
+        std::atomic<float> velocity    { 0.8f };   // 0..1
+        std::atomic<float> gate        { 1.0f };   // 0.1..2.0 (proporción del step)
+        std::atomic<float> probability { 1.0f };   // 0..1
     };
 
     struct Event
@@ -27,12 +29,17 @@ public:
     void prepare (double sampleRate) { currentSampleRate = sampleRate; }
     void reset();
 
-    // Genera eventos para el bloque actual y los acumula en outEvents.
     void process (double bpm,
                   double ppqPosition,
                   bool isPlaying,
                   int numSamples,
                   std::vector<Event>& outEvents);
+
+    // Operaciones one-shot (llamadas desde la UI)
+    void randomizeAll();
+    void clearAll();
+    void shiftLeft();
+    void shiftRight();
 
     // Parámetros globales (atómicos, seguros entre hilos)
     std::atomic<bool>  enabled   { false };
@@ -54,5 +61,7 @@ private:
     int computeSeqPos (int absoluteStep) const;
 
     double currentSampleRate = 44100.0;
-    int    pendingNote = -1;
+
+    int    pendingNote          = -1;
+    int    samplesUntilNoteOff  = -1;
 };
