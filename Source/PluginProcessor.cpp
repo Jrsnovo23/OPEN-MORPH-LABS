@@ -33,6 +33,10 @@ void PPGWave3Processor::prepareToPlay (double sampleRate, int samplesPerBlock)
     std::fill (fftFifo.begin(), fftFifo.end(), 0.0f);
     std::fill (fftBuffer.begin(), fftBuffer.end(), 0.0f);
     for (auto& m : spectrumMagnitudes) m.store (-90.0f);
+
+    // Resetear el secuenciador
+    sequencer.prepare (sampleRate);
+    sequencer.reset();
 }
 
 bool PPGWave3Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -47,12 +51,19 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
+    // Info del host: BPM, PPQ, playing
+    double ppqPos    = -1.0;
+    bool   isPlaying = false;
+
     if (auto* ph = getPlayHead())
     {
         if (auto pos = ph->getPosition())
         {
             if (auto bpm = pos->getBpm())
                 currentBpm.store (*bpm);
+            if (auto ppq = pos->getPpqPosition())
+                ppqPos = *ppq;
+            isPlaying = pos->getIsPlaying();
         }
     }
 
@@ -67,6 +78,25 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
 
+    // ---- Fase 10: secuenciador ----
+    // 1) Inyecta los eventos del secuenciador al buffer MIDI.
+    {
+        std::vector<StepSequencer::Event> seqEvents;
+        sequencer.process (currentBpm.load(), ppqPos, isPlaying,
+                           buffer.getNumSamples(), seqEvents);
+
+        for (const auto& e : seqEvents)
+        {
+            if (e.type == StepSequencer::Event::NoteOn)
+                midi.addEvent (juce::MidiMessage::noteOn (1, e.midiNote, e.velocity),
+                               e.sampleOffset);
+            else
+                midi.addEvent (juce::MidiMessage::noteOff (1, e.midiNote),
+                               e.sampleOffset);
+        }
+    }
+
+    // 2) Pitch bend y mod wheel de la UI
     {
         const int pbValue = juce::jlimit (0, 16383,
             (int) std::lround (8192.0f + pitchBendAtomic.load() * 8192.0f));
@@ -175,7 +205,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     effects.process (buffer);
 
-    // ===== FASE 12: analizador de espectro (post-FX) =====
+    // ---- Fase 12: analizador de espectro ----
     {
         const int numSamples = buffer.getNumSamples();
         const int numCh      = buffer.getNumChannels();
@@ -193,17 +223,12 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
             if (fifoIdx >= fftSize)
             {
-                // Copiar al buffer de trabajo (deja la segunda mitad a 0)
                 std::copy (fftFifo.begin(), fftFifo.end(), fftBuffer.begin());
                 std::fill (fftBuffer.begin() + fftSize, fftBuffer.end(), 0.0f);
 
-                // Aplicar ventana Hann
                 window.multiplyWithWindowingTable (fftBuffer.data(), (size_t) fftSize);
-
-                // FFT
                 fft.performFrequencyOnlyForwardTransform (fftBuffer.data());
 
-                // Reducir a 128 bins logarítmicos (20 Hz a 20 kHz)
                 const float srF = (float) currentSampleRate;
                 const float freqMin = 20.0f;
                 const float freqMax = 20000.0f;
@@ -225,7 +250,6 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
                     for (int k = bin0; k <= bin1; ++k)
                         maxMag = juce::jmax (maxMag, fftBuffer[(size_t) k]);
 
-                    // Normalización (fftSize/2) y a dB con suelo en -90
                     const float normalized = maxMag / ((float) fftSize * 0.5f);
                     const float db = juce::Decibels::gainToDecibels (normalized, -90.0f);
 
@@ -256,15 +280,29 @@ juce::AudioProcessorEditor* PPGWave3Processor::createEditor()
 
 void PPGWave3Processor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    auto state = apvts.copyState();
+
+    // Reemplazar el hijo SEQUENCER si ya existía
+    if (auto old = state.getChildWithName ("SEQUENCER"); old.isValid())
+        state.removeChild (old, nullptr);
+
+    state.addChild (sequencer.toValueTree(), -1, nullptr);
+
+    if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
 
 void PPGWave3Processor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
+    {
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+        {
+            auto tree = juce::ValueTree::fromXml (*xml);
+            apvts.replaceState (tree);
+            sequencer.fromValueTree (tree.getChildWithName ("SEQUENCER"));
+        }
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
