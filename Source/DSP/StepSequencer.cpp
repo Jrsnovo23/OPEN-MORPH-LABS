@@ -3,6 +3,7 @@
 void StepSequencer::reset()
 {
     pendingNote = -1;
+    samplesUntilNoteOff = -1;
     currentStep.store (-1);
 }
 
@@ -42,9 +43,31 @@ void StepSequencer::process (double bpm,
 
     const bool on = enabled.load() && isPlaying && ppqPosition >= 0.0;
 
+    // ---- NoteOff programado (para gates que se extienden) ----
+    auto tickScheduledOff = [&] ()
+    {
+        if (pendingNote >= 0 && samplesUntilNoteOff >= 0)
+        {
+            if (samplesUntilNoteOff < numSamples)
+            {
+                Event off;
+                off.type = Event::NoteOff;
+                off.sampleOffset = samplesUntilNoteOff;
+                off.midiNote = pendingNote;
+                off.velocity = 0.0f;
+                outEvents.push_back (off);
+                pendingNote = -1;
+                samplesUntilNoteOff = -1;
+            }
+            else
+            {
+                samplesUntilNoteOff -= numSamples;
+            }
+        }
+    };
+
     if (! on)
     {
-        // Si había una nota pendiente, la apagamos
         if (pendingNote >= 0)
         {
             Event off;
@@ -54,10 +77,14 @@ void StepSequencer::process (double bpm,
             off.velocity = 0.0f;
             outEvents.push_back (off);
             pendingNote = -1;
+            samplesUntilNoteOff = -1;
         }
         currentStep.store (-1);
         return;
     }
+
+    // Tick del NoteOff pendiente
+    tickScheduledOff();
 
     static const double rateBeats[] = {
         4.0, 2.0, 1.0, 0.5, 0.25,
@@ -69,6 +96,7 @@ void StepSequencer::process (double bpm,
 
     const double sr       = currentSampleRate;
     const double beatSec  = 60.0 / juce::jmax (1.0, bpm);
+    const double stepSec  = beatsPerStep * beatSec;
     const double blockBeats = (double) numSamples / (sr * beatSec);
 
     const double ppqStart = ppqPosition;
@@ -80,12 +108,13 @@ void StepSequencer::process (double bpm,
     const int   base      = baseNote.load();
     const float swingAmt  = swing.load();
 
+    juce::Random rng;
+
     for (int s = firstStep; s <= lastStep; ++s)
     {
         const double stepStartBeat = s * beatsPerStep;
         double stepStartBeatSwung = stepStartBeat;
 
-        // Swing: retrasa los pasos impares
         if ((s & 1) && swingAmt > 0.0f)
             stepStartBeatSwung += beatsPerStep * 0.5 * swingAmt;
 
@@ -96,10 +125,10 @@ void StepSequencer::process (double bpm,
         currentStep.store (seqPos);
 
         const double beatOffset = stepStartBeatSwung - ppqStart;
-        const int sampleOffset = juce::jlimit (0, numSamples - 1,
+        const int sampleOffset = juce::jlimit (0, juce::jmax (0, numSamples - 1),
             (int) std::round (beatOffset * sr * beatSec));
 
-        // Apagar nota anterior en el mismo sample (monofónico)
+        // Cortamos la nota anterior si aún sonaba
         if (pendingNote >= 0)
         {
             Event off;
@@ -109,23 +138,118 @@ void StepSequencer::process (double bpm,
             off.velocity = 0.0f;
             outEvents.push_back (off);
             pendingNote = -1;
+            samplesUntilNoteOff = -1;
         }
 
         const auto& step = steps[seqPos];
         if (! step.active.load()) continue;
 
+        // Dado de probabilidad
+        const float prob = juce::jlimit (0.0f, 1.0f, step.probability.load());
+        if (rng.nextFloat() > prob) continue;
+
         const int midiNote = juce::jlimit (0, 127, base + step.pitch.load());
         const float vel    = juce::jlimit (0.0f, 1.0f, step.velocity.load());
+        const float gateAmt = juce::jlimit (0.1f, 2.0f, step.gate.load());
 
-        Event on;
-        on.type = Event::NoteOn;
-        on.sampleOffset = sampleOffset;
-        on.midiNote = midiNote;
-        on.velocity = vel;
-        outEvents.push_back (on);
+        Event noteOn;
+        noteOn.type = Event::NoteOn;
+        noteOn.sampleOffset = sampleOffset;
+        noteOn.midiNote = midiNote;
+        noteOn.velocity = vel;
+        outEvents.push_back (noteOn);
 
         pendingNote = midiNote;
+        samplesUntilNoteOff = (int) std::round (stepSec * gateAmt * sr);
     }
+}
+
+void StepSequencer::randomizeAll()
+{
+    juce::Random rng;
+
+    for (int i = 0; i < numSteps; ++i)
+    {
+        // 60% de probabilidad de activar el paso
+        const bool active = rng.nextFloat() < 0.6f;
+        steps[i].active.store (active);
+
+        // Pitch aleatorio -12..+12
+        const int pitch = rng.nextInt (25) - 12;
+        steps[i].pitch.store (pitch);
+
+        // Velocity 0.5..1.0
+        const float vel = 0.5f + rng.nextFloat() * 0.5f;
+        steps[i].velocity.store (vel);
+
+        // Gate 0.2..1.0
+        const float gate = 0.2f + rng.nextFloat() * 0.8f;
+        steps[i].gate.store (gate);
+
+        // Probability 0.5..1.0
+        const float prob = 0.5f + rng.nextFloat() * 0.5f;
+        steps[i].probability.store (prob);
+    }
+}
+
+void StepSequencer::clearAll()
+{
+    for (int i = 0; i < numSteps; ++i)
+    {
+        steps[i].active.store      (false);
+        steps[i].pitch.store       (0);
+        steps[i].velocity.store    (0.8f);
+        steps[i].gate.store        (1.0f);
+        steps[i].probability.store (1.0f);
+    }
+}
+
+void StepSequencer::shiftLeft()
+{
+    const bool  lastActive = steps[0].active.load();
+    const int   lastPitch  = steps[0].pitch.load();
+    const float lastVel    = steps[0].velocity.load();
+    const float lastGate   = steps[0].gate.load();
+    const float lastProb   = steps[0].probability.load();
+
+    for (int i = 0; i < numSteps - 1; ++i)
+    {
+        steps[i].active.store      (steps[i + 1].active.load());
+        steps[i].pitch.store       (steps[i + 1].pitch.load());
+        steps[i].velocity.store    (steps[i + 1].velocity.load());
+        steps[i].gate.store        (steps[i + 1].gate.load());
+        steps[i].probability.store (steps[i + 1].probability.load());
+    }
+
+    steps[numSteps - 1].active.store      (lastActive);
+    steps[numSteps - 1].pitch.store       (lastPitch);
+    steps[numSteps - 1].velocity.store    (lastVel);
+    steps[numSteps - 1].gate.store        (lastGate);
+    steps[numSteps - 1].probability.store (lastProb);
+}
+
+void StepSequencer::shiftRight()
+{
+    const bool  lastActive = steps[numSteps - 1].active.load();
+    const int   lastPitch  = steps[numSteps - 1].pitch.load();
+    const float lastVel    = steps[numSteps - 1].velocity.load();
+    const float lastGate   = steps[numSteps - 1].gate.load();
+    const float lastProb   = steps[numSteps - 1].probability.load();
+
+    for (int i = numSteps - 1; i > 0; --i)
+    {
+        steps[i].active.store      (steps[i - 1].active.load());
+        steps[i].pitch.store       (steps[i - 1].pitch.load());
+        steps[i].velocity.store    (steps[i - 1].velocity.load());
+        steps[i].gate.store        (steps[i - 1].gate.load());
+        steps[i].probability.store (steps[i - 1].probability.load());
+    }
+
+    steps[0].active.store      (lastActive);
+    steps[0].pitch.store       (lastPitch);
+    steps[0].velocity.store    (lastVel);
+    steps[0].gate.store        (lastGate);
+    steps[0].probability.store (lastProb);
 }
 
 juce::ValueTree StepSequencer::toValueTree() const
@@ -141,10 +265,12 @@ juce::ValueTree StepSequencer::toValueTree() const
     for (int i = 0; i < numSteps; ++i)
     {
         juce::ValueTree s ("STEP");
-        s.setProperty ("index",    i,                        nullptr);
-        s.setProperty ("active",   steps[i].active.load(),   nullptr);
-        s.setProperty ("pitch",    steps[i].pitch.load(),    nullptr);
-        s.setProperty ("velocity", steps[i].velocity.load(), nullptr);
+        s.setProperty ("index",      i,                            nullptr);
+        s.setProperty ("active",     steps[i].active.load(),       nullptr);
+        s.setProperty ("pitch",      steps[i].pitch.load(),        nullptr);
+        s.setProperty ("velocity",   steps[i].velocity.load(),     nullptr);
+        s.setProperty ("gate",       steps[i].gate.load(),         nullptr);
+        s.setProperty ("probability",steps[i].probability.load(),  nullptr);
         v.addChild (s, -1, nullptr);
     }
 
@@ -169,8 +295,10 @@ void StepSequencer::fromValueTree (const juce::ValueTree& v)
         const int idx = (int) c.getProperty ("index", -1);
         if (idx < 0 || idx >= numSteps) continue;
 
-        steps[idx].active.store   ((bool)  c.getProperty ("active",   false));
-        steps[idx].pitch.store    ((int)   c.getProperty ("pitch",    0));
-        steps[idx].velocity.store ((float) c.getProperty ("velocity", 0.8f));
+        steps[idx].active.store      ((bool)  c.getProperty ("active",      false));
+        steps[idx].pitch.store       ((int)   c.getProperty ("pitch",       0));
+        steps[idx].velocity.store    ((float) c.getProperty ("velocity",    0.8f));
+        steps[idx].gate.store        ((float) c.getProperty ("gate",        1.0f));
+        steps[idx].probability.store ((float) c.getProperty ("probability", 1.0f));
     }
 }
