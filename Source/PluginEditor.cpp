@@ -398,13 +398,11 @@ PPGWave3Editor::EQBandKnob::EQBandKnob (juce::AudioProcessorValueTreeState& stat
     startTimerHz (30);
 }
 
-// *** AÑADIDO: destructor que faltaba ***
 PPGWave3Editor::EQBandKnob::~EQBandKnob()
 {
     stopTimer();
 }
 
-// *** AÑADIDO: setActiveBand que faltaba ***
 void PPGWave3Editor::EQBandKnob::setActiveBand (int band)
 {
     activeBand = juce::jlimit (0, 3, band);
@@ -499,7 +497,6 @@ void PPGWave3Editor::EQBandKnob::timerCallback()
         }
     }
 }
-
 // ==================== EQCurveDisplay ====================
 
 PPGWave3Editor::EQCurveDisplay::EQCurveDisplay (PPGWave3Processor& processor)
@@ -567,11 +564,10 @@ bool PPGWave3Editor::EQCurveDisplay::cacheChanged (const Cache& a, const Cache& 
 
 void PPGWave3Editor::EQCurveDisplay::timerCallback()
 {
-    // Sonar siempre avanza
+    // FASE 12: repintamos siempre para que el analizador se mueva en tiempo real.
     sonarPhase += 0.0133f;
     if (sonarPhase >= 1.0f) sonarPhase -= 1.0f;
 
-    // FASE 12: repintamos SIEMPRE para que el analizador se mueva en tiempo real.
     const auto now = readParams();
     cached = now;
     hasCached = true;
@@ -613,7 +609,6 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
             else        spectrum.lineTo (x, y);
         }
 
-        // Relleno del espectro
         juce::Path filledSpectrum = spectrum;
         filledSpectrum.lineTo (r.getRight(), r.getBottom());
         filledSpectrum.lineTo (r.getX(),     r.getBottom());
@@ -622,7 +617,6 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
         g.setColour (juce::Colour (0xffaaaaaa).withAlpha (0.10f));
         g.fillPath (filledSpectrum);
 
-        // Línea del espectro
         g.setColour (juce::Colour (0xffdddddd).withAlpha (0.35f));
         g.strokePath (spectrum, juce::PathStrokeType (1.0f));
     }
@@ -734,13 +728,13 @@ void PPGWave3Editor::EQCurveDisplay::paint (juce::Graphics& g)
         const float y = midY - (juce::jlimit (-dbRange, dbRange, m.gain) / dbRange)
                               * (r.getHeight() * 0.45f);
 
-                g.setColour (juce::Colour (0xffffcc55));
+        g.setColour (juce::Colour (0xffffcc55));
         g.fillEllipse (x - 2.5f, y - 2.5f, 5.0f, 5.0f);
         g.setColour (juce::Colour (0xff151515));
         g.drawEllipse (x - 2.5f, y - 2.5f, 5.0f, 5.0f, 1.0f);
     }
 
-    // FASE 12: overlay sonar al final
+    // FASE 12: overlay sonar
     ui::drawSonarOverlay (g, r, sonarPhase);
 }
 
@@ -787,6 +781,7 @@ void PPGWave3Editor::FxTab::paint (juce::Graphics& g)
     g.fillRect (r.getX() + 8, r.getY() + 16,
                 juce::jmin (r.getWidth() - 8, 100), 1);
 }
+
 // ==================== Constructor del editor ====================
 
 PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
@@ -1122,9 +1117,8 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     for (auto* c : allKnobs)
         addAndMakeVisible (c);
 
-            setLookAndFeel (&ppgLnf);
+    setLookAndFeel (&ppgLnf);
     setResizable (false, false);
-    setSize (1280, 920);
 
     // FASE 12: conectar los visualizadores con las fases reales del motor
     osc1Preview.setPhaseSource (&p.osc1Phase);
@@ -1165,7 +1159,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         // RATE
         seqRateCombo.addItemList (
             { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
-        seqRateCombo.setSelectedId (4, juce::dontSendNotification);   // 1/8 por defecto
+        seqRateCombo.setSelectedId (4, juce::dontSendNotification);
         seqRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
         seqRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
         seqRateCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
@@ -1231,9 +1225,12 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         };
         addAndMakeVisible (seqBaseNoteSlider);
 
-        // Timer para iluminar el step actual
         startTimerHz (20);
     }
+
+    // El setSize va al final, DESPUÉS de crear todos los componentes,
+    // para que resized() no acceda a seqSteps vacío.
+    setSize (1280, 920);
 
     updateFxVisibility();
     updateEnvVisibility();
@@ -1595,6 +1592,20 @@ void PPGWave3Editor::applyScaleToAll (float scaleValue)
                                                 juce::Font::bold));
 }
 
+// ==================== reset secuenciador ====================
+
+void PPGWave3Editor::resetSequencer()
+{
+    for (int i = 0; i < StepSequencer::numSteps; ++i)
+    {
+        processorRef.sequencer.steps[i].active.store   (false);
+        processorRef.sequencer.steps[i].pitch.store    (0);
+        processorRef.sequencer.steps[i].velocity.store (0.8f);
+    }
+
+    for (auto* sc : seqSteps)
+        sc->refreshFromModel();
+}
 // ==================== paint ====================
 
 void PPGWave3Editor::paint (juce::Graphics& g)
@@ -1663,8 +1674,6 @@ void PPGWave3Editor::paint (juce::Graphics& g)
     }
 }
 
-// ==================== Helpers de dibujo ====================
-
 void PPGWave3Editor::drawSection (juce::Graphics& g, juce::Rectangle<int> area,
                                   const juce::String& title) const
 {
@@ -1726,7 +1735,6 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 
 void PPGWave3Editor::timerCallback()
 {
-    // Solo refrescamos los controles de paso si el secuenciador está activo.
     if (! processorRef.sequencer.enabled.load())
     {
         for (auto* sc : seqSteps)
@@ -1782,22 +1790,8 @@ void PPGWave3Editor::layoutKnobStackBottom (juce::Rectangle<int> col,
         arr[i]->setBounds (col.removeFromTop (itemHeight).reduced (2, 0));
 }
 
-// ==================== reset secuenciador ====================
-
-void PPGWave3Editor::resetSequencer()
-{
-    for (int i = 0; i < StepSequencer::numSteps; ++i)
-    {
-        processorRef.sequencer.steps[i].active.store   (false);
-        processorRef.sequencer.steps[i].pitch.store    (0);
-        processorRef.sequencer.steps[i].velocity.store (0.8f);
-    }
-
-    for (auto* sc : seqSteps)
-        sc->refreshFromModel();
-}
-
 // ==================== resized ====================
+
 void PPGWave3Editor::resized()
 {
     currentScale = computeScale();
@@ -1899,9 +1893,10 @@ void PPGWave3Editor::resized()
     seqReservedArea = seqRow;
     fxArea = fxRow;
 
-        // ===== FASE 10: layout del secuenciador =====
+    // ===== FASE 10: layout del secuenciador =====
+    if (seqSteps.size() == StepSequencer::numSteps)
     {
-        auto seqArea = seqReservedArea.reduced (10, 22);   // deja sitio para el título
+        auto seqArea = seqReservedArea.reduced (10, 22);
 
         // Columna izquierda: controles globales (~200px)
         auto controlsCol = seqArea.removeFromLeft (200);
@@ -1948,7 +1943,7 @@ void PPGWave3Editor::resized()
                                     stepW - stepGap, seqArea.getHeight());
         }
     }
-    
+
     // Fila superior: 6 columnas
     {
         const int colGap = 6;
@@ -2149,7 +2144,7 @@ void PPGWave3Editor::resized()
         juce::Rectangle<int> inner;
         titleRowFor (modArea, modInfo, inner);
 
-                const int rowH = 50;
+        const int rowH = 50;
 
         auto layoutRow = [&] (juce::Rectangle<int> row,
                               ComboBoxSelector& src, ComboBoxSelector& dst, HSlider& amt)
@@ -2166,6 +2161,7 @@ void PPGWave3Editor::resized()
             amtArea.removeFromTop (labelH);
             amt.setBounds (amtArea);
         };
+
         layoutRow (inner.removeFromTop (rowH), *mod1Src, *mod1Dst, mod1Amt);
         layoutRow (inner.removeFromTop (rowH), *mod2Src, *mod2Dst, mod2Amt);
         layoutRow (inner.removeFromTop (rowH), *mod3Src, *mod3Dst, mod3Amt);
@@ -2231,7 +2227,7 @@ void PPGWave3Editor::resized()
         layoutCol (1, *chorusTab, fxInfoChorus,
                    { &chorusRate, &chorusDepth, &chorusMix });
 
-        // ---- PHASER (2×2) ----
+        // ---- PHASER (2x2) ----
         {
             auto col = fxColumnAreas[2].reduced (6, 6);
             const int colW = col.getWidth();
