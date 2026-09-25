@@ -38,6 +38,7 @@ target_sources(PPGWave3Clone
         Source/DSP/Filter.cpp
         Source/DSP/LFO.cpp
         Source/DSP/Effects.cpp
+        Source/DSP/StepSequencer.cpp
         Source/Synth/SynthVoice.cpp
         Source/UI/PPGLookAndFeel.cpp
         Source/UI/Visualizers.cpp
