@@ -1225,7 +1225,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         };
         addAndMakeVisible (seqBaseNoteSlider);
 
-        // Labels para los sliders horizontales del secuenciador
+                // Labels para los sliders horizontales del secuenciador
         auto styleLabel = [&] (juce::Label& lbl, const juce::String& text)
         {
             lbl.setText (text, juce::dontSendNotification);
@@ -1238,7 +1238,64 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         styleLabel (seqLengthLabel,   "LEN");
         styleLabel (seqBaseNoteLabel, "ROOT");
 
-        // ===== FASE 13: arpegiador =====
+        // ---- Lane selector del secuenciador ----
+        auto styleLaneBtn = [&] (juce::TextButton& b, const juce::String& text)
+        {
+            b.setButtonText (text);
+            b.setClickingTogglesState (false);
+            b.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+            b.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+            b.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+            b.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+            addAndMakeVisible (b);
+        };
+        styleLaneBtn (seqLanePitchBtn, "PITCH");
+        styleLaneBtn (seqLaneVelBtn,   "VEL");
+        styleLaneBtn (seqLaneGateBtn,  "GATE");
+        styleLaneBtn (seqLaneProbBtn,  "PROB");
+
+        seqLanePitchBtn.onClick = [this]() { setActiveSeqLane (0); };
+        seqLaneVelBtn  .onClick = [this]() { setActiveSeqLane (1); };
+        seqLaneGateBtn .onClick = [this]() { setActiveSeqLane (2); };
+        seqLaneProbBtn .onClick = [this]() { setActiveSeqLane (3); };
+
+        // ---- Botones de utilidades del secuenciador ----
+        auto styleUtilBtn = [&] (juce::TextButton& b, const juce::String& text)
+        {
+            b.setButtonText (text);
+            b.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+            b.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffcccccc));
+            addAndMakeVisible (b);
+        };
+        styleUtilBtn (seqRandomizeBtn, "RND");
+        styleUtilBtn (seqClearBtn,     "CLR");
+        styleUtilBtn (seqShiftLeftBtn, "<");
+        styleUtilBtn (seqShiftRightBtn,">");
+
+        seqRandomizeBtn.onClick = [this]()
+        {
+            processorRef.sequencer.randomizeAll();
+            for (auto* sc : seqSteps) sc->refreshFromModel();
+        };
+        seqClearBtn.onClick = [this]()
+        {
+            processorRef.sequencer.clearAll();
+            for (auto* sc : seqSteps) sc->refreshFromModel();
+        };
+        seqShiftLeftBtn.onClick = [this]()
+        {
+            processorRef.sequencer.shiftLeft();
+            for (auto* sc : seqSteps) sc->refreshFromModel();
+        };
+        seqShiftRightBtn.onClick = [this]()
+        {
+            processorRef.sequencer.shiftRight();
+            for (auto* sc : seqSteps) sc->refreshFromModel();
+        };
+
+        setActiveSeqLane (0);
+
+        // ===== ARPEGGIATOR =====
         arpOnOffBtn.setButtonText ("ARP");
         arpOnOffBtn.setClickingTogglesState (true);
         arpOnOffBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
@@ -1263,7 +1320,8 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         };
         addAndMakeVisible (arpLatchBtn);
 
-        arpModeCombo.addItemList ({ "UP", "DOWN", "UP/DOWN", "RANDOM" }, 1);
+        arpModeCombo.addItemList ({ "UP", "DOWN", "UP/DOWN", "DOWN/UP",
+                                    "RANDOM", "AS-PLAYED", "CHORD" }, 1);
         arpModeCombo.setSelectedId (1, juce::dontSendNotification);
         arpModeCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
         arpModeCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
@@ -1289,7 +1347,7 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
 
         arpRateCombo.addItemList (
             { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
-        arpRateCombo.setSelectedId (5, juce::dontSendNotification);   // 1/16
+        arpRateCombo.setSelectedId (5, juce::dontSendNotification);
         arpRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
         arpRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
         arpRateCombo.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff555555));
@@ -1312,6 +1370,22 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
             processorRef.arpeggiator.gate.store ((float) arpGateSlider.getValue());
         };
         addAndMakeVisible (arpGateSlider);
+
+        arpSwingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        arpSwingSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        arpSwingSlider.setRange (0.0, 1.0, 0.01);
+        arpSwingSlider.setValue (0.0, juce::dontSendNotification);
+        arpSwingSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        arpSwingSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        arpSwingSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        arpSwingSlider.onValueChange = [this]()
+        {
+            processorRef.arpeggiator.swing.store ((float) arpSwingSlider.getValue());
+        };
+        addAndMakeVisible (arpSwingSlider);
+
+        styleLabel (arpGateLabel,  "GATE");
+        styleLabel (arpSwingLabel, "SWING");
 
         startTimerHz (20);
     }
@@ -1682,6 +1756,18 @@ void PPGWave3Editor::applyScaleToAll (float scaleValue)
 
 // ==================== reset secuenciador ====================
 
+void PPGWave3Editor::setActiveSeqLane (int lane)
+{
+    activeSeqLane = juce::jlimit (0, 3, lane);
+
+    for (auto* sc : seqSteps)
+        sc->setActiveLane (activeSeqLane);
+
+    seqLanePitchBtn.setToggleState (activeSeqLane == 0, juce::dontSendNotification);
+    seqLaneVelBtn  .setToggleState (activeSeqLane == 1, juce::dontSendNotification);
+    seqLaneGateBtn .setToggleState (activeSeqLane == 2, juce::dontSendNotification);
+    seqLaneProbBtn .setToggleState (activeSeqLane == 3, juce::dontSendNotification);
+}
 void PPGWave3Editor::resetSequencer()
 {
     for (int i = 0; i < StepSequencer::numSteps; ++i)
