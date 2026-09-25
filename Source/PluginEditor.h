@@ -321,7 +321,7 @@ private:
     RotaryKnob compThreshold, compRatio, compAttack, compRelease;
     RotaryKnob compKnee, compMakeup, compScAmount;
 
-        // FASE 10: secuenciador de pasos
+            // FASE 10 + 13: secuenciador + arpegiador
     juce::OwnedArray<SeqStepControl> seqSteps;
 
     juce::TextButton seqOnOffBtn;
@@ -332,6 +332,21 @@ private:
     juce::Slider     seqLengthSlider;
     juce::Slider     seqBaseNoteSlider;
     juce::Label      seqSwingLabel, seqLengthLabel, seqBaseNoteLabel;
+
+    // Lane selector del secuenciador
+    juce::TextButton seqLanePitchBtn, seqLaneVelBtn, seqLaneGateBtn, seqLaneProbBtn;
+    juce::TextButton seqRandomizeBtn, seqClearBtn, seqShiftLeftBtn, seqShiftRightBtn;
+    int activeSeqLane = 0;
+
+    // Arpegiador
+    juce::TextButton arpOnOffBtn;
+    juce::TextButton arpLatchBtn;
+    juce::ComboBox   arpModeCombo;
+    juce::ComboBox   arpOctCombo;
+    juce::ComboBox   arpRateCombo;
+    juce::Slider     arpGateSlider;
+    juce::Slider     arpSwingSlider;
+    juce::Label      arpGateLabel, arpSwingLabel;
 
     // FASE 13: arpegiador
     juce::TextButton arpOnOffBtn;
