@@ -42,6 +42,11 @@ public:
 
     std::atomic<double> currentBpm { 120.0 };
 
+    // ===== FASE 13d: clock global =====
+    // clockMode: 0 = LINK (sync con host), 1 = FREE (BPM interno)
+    std::atomic<int>   clockMode { 0 };
+    std::atomic<float> freeBpm   { 120.0f };    // 20..300
+
     std::atomic<float> peakLevelL { 0.0f };
     std::atomic<float> peakLevelR { 0.0f };
     std::atomic<float> compressorGR { 0.0f };
@@ -50,19 +55,14 @@ public:
     std::atomic<float> pitchBendAtomic { 0.0f };
     std::atomic<float> modWheelAtomic  { 0.0f };
 
-    // Fase 12: fases actuales para visualizadores
     std::atomic<float> osc1Phase { 0.0f };
     std::atomic<float> osc2Phase { 0.0f };
     std::atomic<float> lfo1Phase { 0.0f };
     std::atomic<float> lfo2Phase { 0.0f };
 
-    // Fase 10: secuenciador
     StepSequencer sequencer;
-
-    // Fase 13: arpegiador
     Arpeggiator arpeggiator;
 
-    // Fase 12: analizador de espectro
     static constexpr int fftOrder        = 11;
     static constexpr int fftSize         = 1 << fftOrder;
     static constexpr int fftBins         = fftSize / 2;
@@ -88,6 +88,10 @@ private:
     std::array<std::atomic<float>, numSpectrumBins> spectrumMagnitudes {};
 
     double currentSampleRate = 44100.0;
+
+    // ===== FASE 13d: estado del clock =====
+    double ppqVirtual        = 0.0;
+    int    lastClockModeSeen = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PPGWave3Processor)
 };
