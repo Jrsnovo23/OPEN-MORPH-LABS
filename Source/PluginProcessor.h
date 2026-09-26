@@ -91,6 +91,7 @@ private:
 
     // ===== FASE 13d: estado del clock =====
     double ppqVirtual        = 0.0;
+    double freeStartTime     = 0.0;   // segundos desde getMillisecondCounterHiRes
     int    lastClockModeSeen = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PPGWave3Processor)
