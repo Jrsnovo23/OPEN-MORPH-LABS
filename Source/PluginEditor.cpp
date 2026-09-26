@@ -1117,8 +1117,62 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
     for (auto* c : allKnobs)
         addAndMakeVisible (c);
 
-    setLookAndFeel (&ppgLnf);
+        setLookAndFeel (&ppgLnf);
     setResizable (false, false);
+
+    // ===== FASE 13d: clock global =====
+    {
+        clockLinkBtn.setButtonText ("LINK");
+        clockLinkBtn.setClickingTogglesState (true);
+        clockLinkBtn.setRadioGroupId (0xC10C);
+        clockLinkBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+        clockLinkBtn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+        clockLinkBtn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+        clockLinkBtn.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        clockLinkBtn.setToggleState (true, juce::dontSendNotification);
+        clockLinkBtn.onClick = [this]()
+        {
+            processorRef.clockMode.store (0);
+            updateClockUI();
+        };
+        addAndMakeVisible (clockLinkBtn);
+
+        clockFreeBtn.setButtonText ("FREE");
+        clockFreeBtn.setClickingTogglesState (true);
+        clockFreeBtn.setRadioGroupId (0xC10C);
+        clockFreeBtn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff202020));
+        clockFreeBtn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffaa00));
+        clockFreeBtn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff808080));
+        clockFreeBtn.setColour (juce::TextButton::textColourOnId,   juce::Colours::black);
+        clockFreeBtn.onClick = [this]()
+        {
+            processorRef.clockMode.store (1);
+            updateClockUI();
+        };
+        addAndMakeVisible (clockFreeBtn);
+
+        clockBpmSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+        clockBpmSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        clockBpmSlider.setRange (20.0, 300.0, 1.0);
+        clockBpmSlider.setValue ((double) processorRef.freeBpm.load(),
+                                 juce::dontSendNotification);
+        clockBpmSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
+        clockBpmSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
+        clockBpmSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
+        clockBpmSlider.onValueChange = [this]()
+        {
+            processorRef.freeBpm.store ((float) clockBpmSlider.getValue());
+        };
+        addAndMakeVisible (clockBpmSlider);
+
+        clockBpmLabel.setText ("BPM", juce::dontSendNotification);
+        clockBpmLabel.setJustificationType (juce::Justification::centredRight);
+        clockBpmLabel.setColour (juce::Label::textColourId, juce::Colour (0xff888888));
+        clockBpmLabel.setFont (juce::FontOptions (9.0f, juce::Font::bold));
+        addAndMakeVisible (clockBpmLabel);
+
+        updateClockUI();
+    }
 
     // FASE 12: conectar los visualizadores con las fases reales del motor
     osc1Preview.setPhaseSource (&p.osc1Phase);
@@ -1781,6 +1835,21 @@ void PPGWave3Editor::resetSequencer()
     for (auto* sc : seqSteps)
         sc->refreshFromModel();
 }
+
+// ==================== clock ====================
+
+void PPGWave3Editor::updateClockUI()
+{
+    const int mode = processorRef.clockMode.load();
+
+    clockLinkBtn.setToggleState (mode == 0, juce::dontSendNotification);
+    clockFreeBtn.setToggleState (mode == 1, juce::dontSendNotification);
+
+    const bool isFree = (mode == 1);
+    clockBpmSlider.setEnabled (isFree);
+    clockBpmLabel.setEnabled (isFree);
+}
+
 // ==================== paint ====================
 
 void PPGWave3Editor::paint (juce::Graphics& g)
@@ -1995,6 +2064,19 @@ void PPGWave3Editor::resized()
 
         auto logoZone = h.removeFromLeft (100);
         headerLogoArea = logoZone;
+        h.removeFromLeft (6);
+
+        // FASE 13d: clock global en el header
+        auto clockZone = h.removeFromLeft (220);
+        {
+            auto row = clockZone;
+            clockLinkBtn.setBounds (row.removeFromLeft (52));
+            row.removeFromLeft (2);
+            clockFreeBtn.setBounds (row.removeFromLeft (52));
+            row.removeFromLeft (6);
+            clockBpmLabel.setBounds (row.removeFromLeft (30));
+            clockBpmSlider.setBounds (row);
+        }
         h.removeFromLeft (6);
 
         auto presetZone = h;
