@@ -41,6 +41,11 @@ void PPGWave3Processor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // Arpegiador
     arpeggiator.prepare (sampleRate);
     arpeggiator.reset();
+
+    // FASE 13d: resetear el estado del clock
+    ppqVirtual = 0.0;
+    freeStartTime = 0.0;
+    lastClockModeSeen = clockMode.load();
 }
 
 bool PPGWave3Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -55,21 +60,64 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    double ppqPos    = -1.0;
-    bool   isPlaying = false;
+    // ===== Leer info del host =====
+    double hostBpm      = 120.0;
+    double hostPpq      = -1.0;
+    bool   hostPpqValid = false;
+    bool   hostPlaying  = false;
 
     if (auto* ph = getPlayHead())
     {
         if (auto pos = ph->getPosition())
         {
-            if (auto bpm = pos->getBpm())
-                currentBpm.store (*bpm);
-            if (auto ppq = pos->getPpqPosition())
-                ppqPos = *ppq;
-            isPlaying = pos->getIsPlaying();
+            if (auto bpm = pos->getBpm())       { hostBpm = *bpm; }
+            if (auto ppq = pos->getPpqPosition()) { hostPpq = *ppq; hostPpqValid = true; }
+            hostPlaying = pos->getIsPlaying();
         }
     }
 
+    // ===== FASE 13d: resolver BPM/PPQ/Playing efectivos =====
+    const int mode = clockMode.load();
+
+    if (mode != lastClockModeSeen)
+    {
+        ppqVirtual    = 0.0;
+        freeStartTime = 0.0;
+        lastClockModeSeen = mode;
+    }
+
+    double effectiveBpm;
+    double effectivePpq;
+    bool   effectivePlaying;
+
+    if (mode == 0)  // LINK
+    {
+        effectiveBpm     = hostBpm;
+        effectivePpq     = hostPpqValid ? hostPpq : -1.0;
+        effectivePlaying = hostPlaying;
+    }
+    else            // FREE
+    {
+        effectiveBpm = juce::jlimit (20.0, 300.0, (double) freeBpm.load());
+
+        // PPQ virtual basado en el reloj real del sistema
+        const double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+
+        if (freeStartTime == 0.0)
+            freeStartTime = now;
+
+        const double elapsed = now - freeStartTime;
+        const double beatSec = 60.0 / juce::jmax (1.0, effectiveBpm);
+        ppqVirtual = elapsed / beatSec;
+
+        effectivePpq     = ppqVirtual;
+        effectivePlaying = true;
+    }
+
+    // Este BPM lo ven LFOs (SynthVoice) y Delay sync (Effects)
+    currentBpm.store (effectiveBpm);
+
+    // ---- Guardar eventos MIDI de entrada ----
     for (const auto metadata : midi)
     {
         const auto msg = metadata.getMessage();
@@ -84,7 +132,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // ---- Fase 10: secuenciador ----
     {
         std::vector<StepSequencer::Event> seqEvents;
-        sequencer.process (currentBpm.load(), ppqPos, isPlaying,
+        sequencer.process (effectiveBpm, effectivePpq, effectivePlaying,
                            buffer.getNumSamples(), seqEvents);
 
         for (const auto& e : seqEvents)
@@ -101,7 +149,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // ---- Fase 13: arpegiador ----
     {
         std::vector<Arpeggiator::Event> arpEvents;
-        arpeggiator.process (currentBpm.load(), ppqPos, isPlaying,
+        arpeggiator.process (effectiveBpm, effectivePpq, effectivePlaying,
                              buffer.getNumSamples(), keyboardState, arpEvents);
 
         for (const auto& e : arpEvents)
@@ -115,7 +163,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    // Pitch bend y mod wheel de la UI
+    // ---- Pitch bend y mod wheel ----
     {
         const int pbValue = juce::jlimit (0, 16383,
             (int) std::lround (8192.0f + pitchBendAtomic.load() * 8192.0f));
@@ -128,6 +176,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     synth.renderNextBlock (buffer, midi, 0, buffer.getNumSamples());
 
+    // ---- Parámetros de los efectos ----
     auto getF = [&] (const char* id, float def) -> float
     {
         if (auto* p = apvts.getRawParameterValue (id)) return p->load();
@@ -224,7 +273,7 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     effects.process (buffer);
 
-    // Analizador de espectro
+    // ---- Analizador de espectro ----
     {
         const int numSamples = buffer.getNumSamples();
         const int numCh      = buffer.getNumChannels();
@@ -309,6 +358,14 @@ void PPGWave3Processor::getStateInformation (juce::MemoryBlock& destData)
         state.removeChild (old, nullptr);
     state.addChild (arpeggiator.toValueTree(), -1, nullptr);
 
+    // FASE 13d: guardar el clock
+    juce::ValueTree clock ("CLOCK");
+    clock.setProperty ("mode",    clockMode.load(), nullptr);
+    clock.setProperty ("freeBpm", freeBpm.load(),   nullptr);
+    if (auto old = state.getChildWithName ("CLOCK"); old.isValid())
+        state.removeChild (old, nullptr);
+    state.addChild (clock, -1, nullptr);
+
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
 }
@@ -323,6 +380,13 @@ void PPGWave3Processor::setStateInformation (const void* data, int sizeInBytes)
             apvts.replaceState (tree);
             sequencer.fromValueTree (tree.getChildWithName ("SEQUENCER"));
             arpeggiator.fromValueTree (tree.getChildWithName ("ARPEGGIATOR"));
+
+            auto clockTree = tree.getChildWithName ("CLOCK");
+            if (clockTree.isValid())
+            {
+                clockMode.store ((int)   clockTree.getProperty ("mode",    0));
+                freeBpm.store   ((float) clockTree.getProperty ("freeBpm", 120.0f));
+            }
         }
     }
 }
