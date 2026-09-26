@@ -263,9 +263,10 @@ private:
     PresetDisplay    presetDisplay;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
-    // FASE 13d: clock global
+        // FASE 13d: clock global
     juce::TextButton clockLinkBtn, clockFreeBtn;
     juce::Label      clockBpmLabel;
+    ValueBoxLabel    clockBpmValue;
     juce::Slider     clockBpmSlider;
 
     InfoDisplay osc1Info, osc2Info, filterInfo;
