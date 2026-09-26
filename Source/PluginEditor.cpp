@@ -1159,9 +1159,12 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         clockBpmSlider.setColour (juce::Slider::trackColourId,      juce::Colour (0xffffaa00));
         clockBpmSlider.setColour (juce::Slider::backgroundColourId, juce::Colour (0xff2a2a2a));
         clockBpmSlider.setColour (juce::Slider::thumbColourId,      juce::Colour (0xffffcc55));
-        clockBpmSlider.onValueChange = [this]()
+                clockBpmSlider.onValueChange = [this]()
         {
-            processorRef.freeBpm.store ((float) clockBpmSlider.getValue());
+            const float v = (float) clockBpmSlider.getValue();
+            processorRef.freeBpm.store (v);
+            clockBpmValue.setText (juce::String (juce::roundToInt (v)),
+                                   juce::dontSendNotification);
         };
         addAndMakeVisible (clockBpmSlider);
 
@@ -1170,6 +1173,11 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         clockBpmLabel.setColour (juce::Label::textColourId, juce::Colour (0xff888888));
         clockBpmLabel.setFont (juce::FontOptions (9.0f, juce::Font::bold));
         addAndMakeVisible (clockBpmLabel);
+
+        clockBpmValue.setText (
+            juce::String (juce::roundToInt ((float) processorRef.freeBpm.load())),
+            juce::dontSendNotification);
+        addAndMakeVisible (clockBpmValue);
 
         updateClockUI();
     }
@@ -2066,19 +2074,21 @@ void PPGWave3Editor::resized()
         headerLogoArea = logoZone;
         h.removeFromLeft (6);
 
-        // FASE 13d: clock global en el header
-        auto clockZone = h.removeFromLeft (220);
+                // FASE 13d: clock global en el header
+        auto clockZone = h.removeFromLeft (210);
         {
             auto row = clockZone;
-            clockLinkBtn.setBounds (row.removeFromLeft (52));
+            clockLinkBtn.setBounds (row.removeFromLeft (44));
             row.removeFromLeft (2);
-            clockFreeBtn.setBounds (row.removeFromLeft (52));
-            row.removeFromLeft (6);
-            clockBpmLabel.setBounds (row.removeFromLeft (30));
-            clockBpmSlider.setBounds (row);
+            clockFreeBtn.setBounds (row.removeFromLeft (44));
+            row.removeFromLeft (4);
+            clockBpmLabel.setBounds (row.removeFromLeft (22));
+            row.removeFromLeft (2);
+            clockBpmSlider.setBounds (row.removeFromLeft (52));
+            row.removeFromLeft (2);
+            clockBpmValue.setBounds (row);
         }
         h.removeFromLeft (6);
-
         auto presetZone = h;
 
         const int innerH = masterZone.getHeight();
