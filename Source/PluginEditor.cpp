@@ -1157,8 +1157,11 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         addAndMakeVisible (seqResetBtn);
 
         // RATE
-        seqRateCombo.addItemList (
-            { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
+                seqRateCombo.addItemList (
+            { "1/1", "1/2", "1/4", "1/8", "1/16",
+              "1/4T", "1/8T", "1/16T",
+              "1/4.", "1/8.",
+              "1/12", "1/32", "1/64" }, 1);
         seqRateCombo.setSelectedId (4, juce::dontSendNotification);
         seqRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
         seqRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
@@ -1345,8 +1348,11 @@ PPGWave3Editor::PPGWave3Editor (PPGWave3Processor& p)
         };
         addAndMakeVisible (arpOctCombo);
 
-        arpRateCombo.addItemList (
-            { "1/1", "1/2", "1/4", "1/8", "1/16", "1/4T", "1/8T", "1/16T", "1/4." }, 1);
+                arpRateCombo.addItemList (
+            { "1/1", "1/2", "1/4", "1/8", "1/16",
+              "1/4T", "1/8T", "1/16T",
+              "1/4.", "1/8.",
+              "1/12", "1/32", "1/64" }, 1);
         arpRateCombo.setSelectedId (5, juce::dontSendNotification);
         arpRateCombo.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1c1c1c));
         arpRateCombo.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffffcc55));
