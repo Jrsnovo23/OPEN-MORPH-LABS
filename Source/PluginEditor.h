@@ -243,9 +243,12 @@ private:
                                  std::initializer_list<juce::Component*> knobs,
                                  int itemHeight);
 
-    // FASE 10 + 13: secuenciador + arpegiador
+        // FASE 10 + 13: secuenciador + arpegiador
     void  resetSequencer();
     void  setActiveSeqLane (int lane);
+
+    // FASE 13d: clock
+    void  updateClockUI();
 
     PPGWave3Processor& processorRef;
     juce::AudioProcessorValueTreeState& apvts;
@@ -259,6 +262,11 @@ private:
     juce::TextButton loadBtn, saveBtn, browseBtn;
     PresetDisplay    presetDisplay;
     std::unique_ptr<juce::FileChooser> fileChooser;
+
+    // FASE 13d: clock global
+    juce::TextButton clockLinkBtn, clockFreeBtn;
+    juce::Label      clockBpmLabel;
+    juce::Slider     clockBpmSlider;
 
     InfoDisplay osc1Info, osc2Info, filterInfo;
     InfoDisplay envInfo, masterInfo;
