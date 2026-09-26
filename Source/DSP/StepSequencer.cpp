@@ -15,15 +15,15 @@ int StepSequencer::computeSeqPos (int absoluteStep) const
 
     switch (dir)
     {
-        case 0: return pos;                         // Fwd
-        case 1: return len - 1 - pos;               // Rev
-        case 2:                                     // PingPong
+        case 0: return pos;
+        case 1: return len - 1 - pos;
+        case 2:
         {
             const int period = juce::jmax (2, 2 * len - 2);
             const int p = absoluteStep % period;
             return (p < len) ? p : (period - p);
         }
-        case 3:                                     // Random
+        case 3:
         {
             juce::uint32 h = (juce::uint32) absoluteStep * 2654435761u;
             h ^= h >> 16;
@@ -43,7 +43,6 @@ void StepSequencer::process (double bpm,
 
     const bool on = enabled.load() && isPlaying && ppqPosition >= 0.0;
 
-    // ---- NoteOff programado (para gates que se extienden) ----
     auto tickScheduledOff = [&] ()
     {
         if (pendingNote >= 0 && samplesUntilNoteOff >= 0)
@@ -83,15 +82,17 @@ void StepSequencer::process (double bpm,
         return;
     }
 
-    // Tick del NoteOff pendiente
     tickScheduledOff();
 
+    // 13 divisiones (mismo orden que Arpeggiator)
     static const double rateBeats[] = {
         4.0, 2.0, 1.0, 0.5, 0.25,
         1.0 * 2.0/3.0, 0.5 * 2.0/3.0, 0.25 * 2.0/3.0,
-        1.5
+        1.5, 0.75,
+        1.0 / 3.0,
+        0.125, 0.0625
     };
-    const int ri = juce::jlimit (0, 8, rateIndex.load());
+    const int ri = juce::jlimit (0, 12, rateIndex.load());
     const double beatsPerStep = rateBeats[ri];
 
     const double sr       = currentSampleRate;
@@ -128,7 +129,6 @@ void StepSequencer::process (double bpm,
         const int sampleOffset = juce::jlimit (0, juce::jmax (0, numSamples - 1),
             (int) std::round (beatOffset * sr * beatSec));
 
-        // Cortamos la nota anterior si aún sonaba
         if (pendingNote >= 0)
         {
             Event off;
@@ -144,7 +144,6 @@ void StepSequencer::process (double bpm,
         const auto& step = steps[seqPos];
         if (! step.active.load()) continue;
 
-        // Dado de probabilidad
         const float prob = juce::jlimit (0.0f, 1.0f, step.probability.load());
         if (rng.nextFloat() > prob) continue;
 
@@ -170,23 +169,18 @@ void StepSequencer::randomizeAll()
 
     for (int i = 0; i < numSteps; ++i)
     {
-        // 60% de probabilidad de activar el paso
         const bool active = rng.nextFloat() < 0.6f;
         steps[i].active.store (active);
 
-        // Pitch aleatorio -12..+12
         const int pitch = rng.nextInt (25) - 12;
         steps[i].pitch.store (pitch);
 
-        // Velocity 0.5..1.0
         const float vel = 0.5f + rng.nextFloat() * 0.5f;
         steps[i].velocity.store (vel);
 
-        // Gate 0.2..1.0
         const float gate = 0.2f + rng.nextFloat() * 0.8f;
         steps[i].gate.store (gate);
 
-        // Probability 0.5..1.0
         const float prob = 0.5f + rng.nextFloat() * 0.5f;
         steps[i].probability.store (prob);
     }
