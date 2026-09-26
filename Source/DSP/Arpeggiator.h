@@ -15,7 +15,6 @@ public:
         float velocity;
     };
 
-    // Modos
     enum class Mode
     {
         Up = 0,
@@ -37,11 +36,10 @@ public:
                   const juce::MidiKeyboardState& keyboardState,
                   std::vector<Event>& outEvents);
 
-    // Parámetros globales
     std::atomic<bool>  enabled   { false };
-    std::atomic<int>   mode      { 0 };       // 0..6 (ver enum)
+    std::atomic<int>   mode      { 0 };       // 0..6
     std::atomic<int>   octaves   { 1 };       // 1..4
-    std::atomic<int>   rateIndex { 4 };       // mismo sistema que StepSequencer
+    std::atomic<int>   rateIndex { 4 };       // 0..12 (1/1 ... 1/64)
     std::atomic<float> gate      { 0.5f };    // 0.1..1.0
     std::atomic<float> swing     { 0.0f };    // 0..1
     std::atomic<bool>  latch     { false };
@@ -58,14 +56,16 @@ private:
 
     double currentSampleRate = 44100.0;
 
-    // Estado
     std::array<bool, 128> latchedNotes {};
-    std::array<int, 128>  playOrder {};      // orden de pulsación para AsPlayed
+    std::array<int, 128>  playOrder {};
     int  playOrderCount       = 0;
     int  currentNote           = -1;
     int  samplesUntilNoteOff   = -1;
     int  currentSequenceIndex  = 0;
     int  upDownDirection       = 1;
+
+    // Notas del acorde activas (modo CHORD)
+    std::vector<int> chordNotesHeld;
 
     bool anyNoteHeldPrevBlock  = false;
 };
