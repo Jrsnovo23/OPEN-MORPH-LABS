@@ -10,6 +10,7 @@ void Arpeggiator::reset()
     latchedNotes.fill (false);
     playOrder.fill (0);
     playOrderCount = 0;
+    chordNotesHeld.clear();
     anyNoteHeldPrevBlock = false;
 }
 
@@ -20,7 +21,6 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
     const bool useLatch = latch.load();
     const int  modeIdx  = juce::jlimit (0, 6, mode.load());
 
-    // 1) Recolectar notas sostenidas
     for (int n = 0; n < 128; ++n)
     {
         const bool isOn = state.isNoteOn (1, n);
@@ -28,7 +28,6 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
             latchedNotes[(size_t) n] = true;
     }
 
-    // 2) Rellenar la lista de notas (sostenidas + latched)
     for (int n = 0; n < 128; ++n)
     {
         const bool isOn = state.isNoteOn (1, n);
@@ -36,12 +35,10 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
         if (keep) notes.push_back (n);
     }
 
-    // 3) Reordenar según el modo
     switch (modeIdx)
     {
         case (int) Mode::Up:
         case (int) Mode::UpDown:
-            // Orden ascendente (ya está así por construcción)
             break;
 
         case (int) Mode::Down:
@@ -50,12 +47,10 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
             break;
 
         case (int) Mode::Random:
-            // Orden de base ascendente, la aleatoriedad la da currentSequenceIndex
             break;
 
         case (int) Mode::AsPlayed:
         {
-            // Reordenar según playOrder (solo notas que estén en playOrder)
             std::vector<int> ordered;
             for (int i = 0; i < playOrderCount; ++i)
             {
@@ -63,7 +58,6 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
                 if (std::find (notes.begin(), notes.end(), n) != notes.end())
                     ordered.push_back (n);
             }
-            // Añadir las que no estuvieran en playOrder (fallback)
             for (int n : notes)
                 if (std::find (ordered.begin(), ordered.end(), n) == ordered.end())
                     ordered.push_back (n);
@@ -73,7 +67,6 @@ std::vector<int> Arpeggiator::buildNoteList (const juce::MidiKeyboardState& stat
         }
 
         case (int) Mode::Chord:
-            // Orden irrelevante; todas se disparan juntas
             break;
     }
 
@@ -118,25 +111,41 @@ void Arpeggiator::process (double bpm,
 
     const bool on = enabled.load() && isPlaying && ppqPosition >= 0.0;
 
-    // Si no está corriendo: apagar nota pendiente y reset
-    if (! on)
+    // Función auxiliar: apagar todas las notas activas (single + chord)
+    auto flushAllNotes = [&] (int atSample)
     {
         if (currentNote >= 0)
         {
             Event off;
             off.type = Event::NoteOff;
-            off.sampleOffset = 0;
+            off.sampleOffset = atSample;
             off.midiNote = currentNote;
             off.velocity = 0.0f;
             outEvents.push_back (off);
             currentNote = -1;
+            samplesUntilNoteOff = -1;
         }
-        samplesUntilNoteOff = -1;
+
+        for (int n : chordNotesHeld)
+        {
+            Event off;
+            off.type = Event::NoteOff;
+            off.sampleOffset = atSample;
+            off.midiNote = n;
+            off.velocity = 0.0f;
+            outEvents.push_back (off);
+        }
+        chordNotesHeld.clear();
+    };
+
+    if (! on)
+    {
+        flushAllNotes (0);
         currentStepIndex.store (-1);
         return;
     }
 
-    // 1) Tick del NoteOff pendiente
+    // 1) Tick del NoteOff pendiente (solo notas individuales)
     if (currentNote >= 0 && samplesUntilNoteOff >= 0)
     {
         if (samplesUntilNoteOff < numSamples)
@@ -169,14 +178,12 @@ void Arpeggiator::process (double bpm,
         playOrderCount = 0;
     }
 
-    // En latch: si acaba de empezar un nuevo acorde, resetear
     if (latch.load() && anyHeldNow && ! anyNoteHeldPrevBlock)
     {
         latchedNotes.fill (false);
         playOrderCount = 0;
     }
 
-    // Registrar notas nuevas en playOrder
     for (int n = 0; n < 128; ++n)
     {
         if (keyboardState.isNoteOn (1, n))
@@ -192,13 +199,15 @@ void Arpeggiator::process (double bpm,
 
     anyNoteHeldPrevBlock = anyHeldNow;
 
-    // 3) Calcular si toca avanzar de paso
+    // 3) Rates (13 divisiones)
     static const double rateBeats[] = {
-        4.0, 2.0, 1.0, 0.5, 0.25,
-        1.0 * 2.0/3.0, 0.5 * 2.0/3.0, 0.25 * 2.0/3.0,
-        1.5
+        4.0, 2.0, 1.0, 0.5, 0.25,                 // 1/1, 1/2, 1/4, 1/8, 1/16
+        1.0 * 2.0/3.0, 0.5 * 2.0/3.0, 0.25 * 2.0/3.0,  // 1/4T, 1/8T, 1/16T
+        1.5, 0.75,                                 // 1/4., 1/8.
+        1.0 / 3.0,                                 // 1/12
+        0.125, 0.0625                              // 1/32, 1/64
     };
-    const int ri = juce::jlimit (0, 8, rateIndex.load());
+    const int ri = juce::jlimit (0, 12, rateIndex.load());
     const double beatsPerStep = rateBeats[ri];
 
     const double sr = currentSampleRate;
@@ -252,7 +261,8 @@ void Arpeggiator::process (double bpm,
 
     const int modeIdx = juce::jlimit (0, 6, mode.load());
 
-    // 5) Apagar nota anterior en el mismo sample si aún sonaba
+    // 5) Apagar notas anteriores en el mismo sample
+    //    (individual + chord)
     if (currentNote >= 0)
     {
         Event off;
@@ -264,18 +274,26 @@ void Arpeggiator::process (double bpm,
         currentNote = -1;
         samplesUntilNoteOff = -1;
     }
+    for (int n : chordNotesHeld)
+    {
+        Event off;
+        off.type = Event::NoteOff;
+        off.sampleOffset = sampleOffset;
+        off.midiNote = n;
+        off.velocity = 0.0f;
+        outEvents.push_back (off);
+    }
+    chordNotesHeld.clear();
 
     const float vel = 0.85f;
-    const float gateAmt = juce::jlimit (0.1f, 1.0f, gate.load());
-    const int noteOffSamples = (int) std::round (stepSec * gateAmt * sr);
 
-    // 6) CHORD: disparar todas las notas a la vez
+    // 6) CHORD: disparar todas las notas y guardarlas para apagarlas luego
     if (modeIdx == (int) Mode::Chord)
     {
+        const int octs = juce::jlimit (1, 4, octaves.load());
+
         for (size_t i = 0; i < baseNotes.size(); ++i)
         {
-            // Para octavas > 1, dispara también las octavas
-            const int octs = juce::jlimit (1, 4, octaves.load());
             for (int o = 0; o < octs; ++o)
             {
                 const int n = juce::jlimit (0, 127, baseNotes[i] + o * 12);
@@ -286,16 +304,15 @@ void Arpeggiator::process (double bpm,
                 noteOn.midiNote = n;
                 noteOn.velocity = vel;
                 outEvents.push_back (noteOn);
+
+                chordNotesHeld.push_back (n);
             }
         }
-        // Para simplicidad, dejamos "sin noteOff programado" — el siguiente step
-        // disparará NoteOff de las notas previas si las hubiera. En la práctica,
-        // con CHORD el hueco entre steps ya las apaga.
         currentStepIndex.store (0);
         return;
     }
 
-    // 7) Resto de modos: disparar una nota individual
+    // 7) Resto de modos: nota individual con NoteOff programado
     int chosenIndex = 0;
     switch (modeIdx)
     {
@@ -372,7 +389,9 @@ void Arpeggiator::process (double bpm,
     outEvents.push_back (noteOn);
 
     currentNote = midiNote;
-    samplesUntilNoteOff = noteOffSamples;
+
+    const float gateAmt = juce::jlimit (0.1f, 1.0f, gate.load());
+    samplesUntilNoteOff = (int) std::round (stepSec * gateAmt * sr);
 }
 
 juce::ValueTree Arpeggiator::toValueTree() const
