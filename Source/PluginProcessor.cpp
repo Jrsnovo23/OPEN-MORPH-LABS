@@ -76,9 +76,10 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         }
     }
 
-    // ===== FASE 13d: resolver BPM/PPQ/Playing efectivos =====
+        // ===== FASE 13d: resolver BPM/PPQ/Playing efectivos =====
     const int mode = clockMode.load();
 
+    // Al cambiar de modo, reseteamos el reloj virtual
     if (mode != lastClockModeSeen)
     {
         ppqVirtual    = 0.0;
@@ -100,7 +101,9 @@ void PPGWave3Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     {
         effectiveBpm = juce::jlimit (20.0, 300.0, (double) freeBpm.load());
 
-        // PPQ virtual basado en el reloj real del sistema
+        // PPQ virtual basado en el reloj real del sistema, NO en el buffer.
+        // Esto hace que funcione aunque el host llame a processBlock de forma irregular
+        // (Ableton en Stop, Standalone sin Play, etc.).
         const double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
 
         if (freeStartTime == 0.0)
