@@ -1998,6 +1998,20 @@ void PPGWave3Editor::drawLogo (juce::Graphics& g, juce::Rectangle<int> area) con
 
 void PPGWave3Editor::timerCallback()
 {
+    // FASE 13d: si estamos en LINK, mostrar el BPM del host en el slider
+    const int clockMode = processorRef.clockMode.load();
+    if (clockMode == 0)
+    {
+        const double hostBpm = processorRef.currentBpm.load();
+        if (hostBpm > 1.0)
+        {
+            clockBpmSlider.setValue (hostBpm, juce::dontSendNotification);
+            clockBpmValue.setText (juce::String (juce::roundToInt (hostBpm)),
+                                   juce::dontSendNotification);
+        }
+    }
+
+    // Halo del secuenciador
     if (! processorRef.sequencer.enabled.load())
     {
         for (auto* sc : seqSteps)
